@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { instagramService } = require('../services/instagram.service');
+const { botService } = require('../services/bot');
 
 router.get('/', async (req, res) => {
   const accounts = await instagramService.getAccounts();
@@ -41,12 +42,20 @@ router.post('/switch-account', (req, res) => {
 });
 
 router.post('/start', (req, res) => {
-  const { username, hashtag } = req.body;
-  instagramService.likeCommentsByHashtag(username, hashtag, (status, message) => {
+  const { username, type, target } = req.body;
+  botService.start(username, type, target, (status, message) => {
     req.wss.clients.forEach(client => {
-      client.send(JSON.stringify({ status, message }));
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ status, message }));
+      }
     });
   });
+  res.redirect('/');
+});
+
+router.post('/stop', (req, res) => {
+  const { username } = req.body;
+  botService.stop(username);
   res.redirect('/');
 });
 

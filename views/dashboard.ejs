@@ -33,17 +33,26 @@
       </div>
     </div>
 
-    <div class="hashtag-form">
-      <form action="/start" method="POST">
+    <div class="bot-controls">
+      <form id="start-form" action="/start" method="POST">
         <input type="hidden" name="username" value="<%= selectedAccount.username %>">
-        <input type="text" name="hashtag" placeholder="Enter hashtag">
-        <button type="submit">Start Liking</button>
+        <select name="type">
+          <option value="hashtag">Hashtag</option>
+          <option value="explore">Explore</option>
+        </select>
+        <input type="text" name="target" placeholder="Enter hashtag">
+        <button type="submit">Start</button>
+      </form>
+      <form id="stop-form" action="/stop" method="POST">
+        <input type="hidden" name="username" value="<%= selectedAccount.username %>">
+        <button type="submit">Stop</button>
       </form>
     </div>
 
     <div class="status-panel">
-      <p>Status: <span id="status">Idle</span></p>
-      <p id="message"></p>
+      <h3>Bot Status</h3>
+      <p><strong>Status:</strong> <span id="status">Idle</span></p>
+      <p><strong>Message:</strong> <span id="message"></span></p>
     </div>
   <% } else { %>
     <p>No accounts added. Please add an account.</p>
@@ -61,10 +70,22 @@
 
 <script>
   const socket = new WebSocket('ws://' + window.location.host);
+  const statusEl = document.getElementById('status');
+  const messageEl = document.getElementById('message');
+  const typeSelect = document.querySelector('select[name="type"]');
+  const targetInput = document.querySelector('input[name="target"]');
+
+  typeSelect.addEventListener('change', () => {
+    if (typeSelect.value === 'explore') {
+      targetInput.style.display = 'none';
+    } else {
+      targetInput.style.display = 'block';
+    }
+  });
 
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
-    document.getElementById('status').textContent = data.status;
-    document.getElementById('message').textContent = data.message;
+    statusEl.textContent = data.status;
+    messageEl.textContent = data.message;
   };
 </script>

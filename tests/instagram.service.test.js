@@ -2,7 +2,6 @@ const { InstagramService } = require('../services/instagram.service');
 const { IgApiClient } = require('instagram-private-api');
 const fs = require('fs').promises;
 
-jest.mock('instagram-private-api');
 jest.mock('fs', () => ({
   promises: {
     readFile: jest.fn(),
