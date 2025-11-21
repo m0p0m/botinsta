@@ -5,13 +5,15 @@ const { botService } = require('../services/bot');
 
 router.get('/', async (req, res) => {
   const accounts = await instagramService.getAccounts();
-  if (accounts.length === 0) {
-    res.render('login');
-  } else {
-    const selectedAccount = accounts.find(acc => acc.username === req.session.selectedUsername) || accounts[0];
-    const profile = await instagramService.getProfileData(selectedAccount.username);
-    res.render('dashboard', { accounts, selectedAccount, profile });
+  let selectedAccount = null;
+  let profile = null;
+
+  if (accounts.length > 0) {
+    selectedAccount = accounts.find(acc => acc.username === req.session.selectedUsername) || accounts[0];
+    profile = await instagramService.getProfileData(selectedAccount.username);
   }
+
+  res.render('dashboard', { accounts, selectedAccount, profile });
 });
 
 router.post('/login', async (req, res) => {
