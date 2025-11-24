@@ -32,4 +32,24 @@ describe('BotService', () => {
     expect(botService).toBeDefined();
   });
 
+  it('should start and stop the bot', () => {
+    const username = 'testuser';
+    botService.start(username, 'hashtag', 'test', onUpdate);
+    expect(botService.jobs[username]).toBeDefined();
+    expect(botService.jobs[username].status).toBe('running');
+    expect(onUpdate).toHaveBeenCalledWith('در حال اجرا', `ربات برای ${username} شروع به کار کرد.`);
+
+    botService.stop(username);
+    expect(botService.jobs[username].stop).toBe(true);
+    expect(onUpdate).toHaveBeenCalledWith('بیکار', `ربات برای ${username} در حال توقف است.`);
+  });
+
+  it('should calculate the delay between likes correctly', () => {
+    const username = 'testuser';
+    const options = { total_likes_target: 700, time_period_hours: 12 };
+    const expectedDelay = (12 * 60 * 60 * 1000) / 700;
+
+    botService.start(username, 'hashtag', 'test', onUpdate, options);
+    expect(botService.jobs[username].delay_between_likes_ms).toBe(expectedDelay);
+  });
 });

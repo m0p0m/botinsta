@@ -6,7 +6,7 @@ class BotService {
     this.jobs = {};
   }
 
-  start(username, type, target, onUpdate, options = {}) {
+  start(username, type, target, onUpdate, options = {}, startTime = null) {
     if (this.jobs[username]) {
       this.stop(username);
     }
@@ -29,14 +29,33 @@ class BotService {
     };
 
     this.jobs[username] = job;
-    job.onUpdate('running', `Bot started for ${username}.`);
-    this.run(username);
+
+    if (startTime) {
+      const [hours, minutes] = startTime.split(':');
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+
+      if (startDate < now) {
+        startDate.setDate(startDate.getDate() + 1);
+      }
+
+      const delay = startDate.getTime() - now.getTime();
+      job.onUpdate('زمان‌بندی شده', `ربات برای شروع در ساعت ${startDate.toLocaleTimeString()} زمان‌بندی شد`);
+
+      setTimeout(() => {
+        job.onUpdate('در حال اجرا', `ربات برای ${username} شروع به کار کرد.`);
+        this.run(username);
+      }, delay);
+    } else {
+      job.onUpdate('در حال اجرا', `ربات برای ${username} شروع به کار کرد.`);
+      this.run(username);
+    }
   }
 
   stop(username) {
     if (this.jobs[username]) {
       this.jobs[username].stop = true;
-      this.jobs[username].onUpdate('idle', `Bot stopping for ${username}.`);
+      this.jobs[username].onUpdate('بیکار', `ربات برای ${username} در حال توقف است.`);
     }
   }
 
@@ -44,7 +63,7 @@ class BotService {
     const job = this.jobs[username];
     if (!job || job.stop) {
       delete this.jobs[username];
-      if (job) job.onUpdate('idle', 'Bot stopped.');
+      if (job) job.onUpdate('بیکار', 'ربات متوقف شد.');
       return;
     }
 
@@ -62,17 +81,17 @@ class BotService {
 
     if (!job.stop) {
       if (job.status === 'running') {
-        job.onUpdate('idle', `Waiting for ${job.polling_delay / 1000} seconds before checking for new posts.`);
+        job.onUpdate('بیکار', `در حال انتظار برای ${job.polling_delay / 1000} ثانیه قبل از بررسی پست‌های جدید.`);
         setTimeout(() => this.run(username), job.polling_delay);
       }
     } else {
       delete this.jobs[username];
-      job.onUpdate('idle', 'Bot stopped.');
+      job.onUpdate('بیکار', 'ربات متوقف شد.');
     }
   }
 
   async likeCommentsByHashtag(job) {
-    job.onUpdate('running', `Fetching posts with hashtag: ${job.target}`);
+    job.onUpdate('در حال اجرا', `در حال دریافت پست‌ها با هشتگ: ${job.target}`);
     const feed = await instagramService.getHashtagFeed(job.username, job.target);
 
     while (feed.isMoreAvailable()) {
@@ -86,7 +105,7 @@ class BotService {
   }
 
   async likeCommentsFromExplore(job) {
-    job.onUpdate('running', 'Fetching posts from explore feed.');
+    job.onUpdate('در حال اجرا', 'در حال دریافت پست‌ها از اکسپلور.');
     const feed = await instagramService.getExploreFeed(job.username);
 
     while (feed.isMoreAvailable()) {
@@ -111,24 +130,24 @@ class BotService {
 
   async likeComment(job, comment) {
     try {
-      job.onUpdate('liking', `Liking comment by ${comment.user.username}`);
+      job.onUpdate('در حال لایک', `در حال لایک کردن کامنت ${comment.user.username}`);
       await instagramService.likeComment(job.username, comment.pk);
       job.likes++;
-      job.onUpdate('liked', `Liked comment by ${comment.user.username}. Total likes: ${job.likes}`);
+      job.onUpdate('لایک شد', `کامنت ${comment.user.username} لایک شد. مجموع لایک‌ها: ${job.likes}`);
       await new Promise(resolve => setTimeout(resolve, job.delay_between_likes_ms));
     } catch (error) {
       if (error instanceof IgActionSpamError) {
-        job.status = 'paused';
-        job.onUpdate('paused', `Rate limited. Pausing for ${job.rate_limit_pause / (60 * 1000)} minutes.`);
+        job.status = 'متوقف';
+        job.onUpdate('متوقف', `محدودیت اینستاگرام. در حال توقف برای ${job.rate_limit_pause / (60 * 1000)} دقیقه.`);
         setTimeout(() => this.testLike(job), job.rate_limit_pause);
       } else {
-        job.onUpdate('error', `Failed to like comment: ${error.message}`);
+        job.onUpdate('خطا', `خطا در لایک کردن کامنت: ${error.message}`);
       }
     }
   }
 
   async testLike(job) {
-    job.onUpdate('running', 'Attempting a test like...');
+    job.onUpdate('در حال اجرا', 'در حال تلاش برای لایک آزمایشی...');
     try {
       const exploreFeed = await instagramService.getExploreFeed(job.username);
       const items = await exploreFeed.items();
@@ -137,17 +156,17 @@ class BotService {
         const comments = await commentsFeed.items();
         if (comments.length > 0) {
           await instagramService.likeComment(job.username, comments[0].pk);
-          job.onUpdate('running', 'Test like successful. Resuming bot.');
+          job.onUpdate('در حال اجرا', 'لایک آزمایشی موفق بود. ربات در حال ادامه کار است.');
           job.status = 'running';
           this.run(job.username);
         } else {
-          throw new Error('No comments found to test like.');
+          throw new Error('هیچ کامنتی برای لایک آزمایشی پیدا نشد.');
         }
       } else {
-        throw new Error('No posts found in explore feed to test like.');
+        throw new Error('هیچ پستی در اکسپلور برای لایک آزمایشی پیدا نشد.');
       }
     } catch (error) {
-      job.onUpdate('paused', `Test like failed. Pausing again. ${error.message}`);
+      job.onUpdate('متوقف', `لایک آزمایشی ناموفق بود. در حال توقف مجدد. ${error.message}`);
       setTimeout(() => this.testLike(job), job.rate_limit_pause);
     }
   }

@@ -1,7 +1,7 @@
 <link rel="stylesheet" href="/css/style.css">
 <div class="dashboard">
   <div class="header">
-    <h1>Instagram Bot</h1>
+    <h1>ربات اینستاگرام</h1>
   </div>
 
   <% if (selectedAccount) { %>
@@ -9,10 +9,13 @@
       <form action="/switch-account" method="POST">
         <select name="username" onchange="this.form.submit()">
           <% accounts.forEach(account => { %>
-            <option value="<%= account.username %>" <%= account.username === selectedAccount.username ? 'selected' : '' %>><%= account.username %></option>
+            <option value="<%= account.username %>" <%= account.username === selectedAccount.username ? 'selected' : '' %>>
+              <%= account.username %>
+            </option>
           <% }) %>
         </select>
       </form>
+      <span id="online-indicator" class="online-indicator" style="display: none;"></span>
     </div>
 
     <div class="profile-info">
@@ -26,45 +29,73 @@
     <div class="profile-stats">
       <div class="stat">
         <h3><%= profile.followers %></h3>
-        <p>Followers</p>
+        <p>دنبال‌کنندگان</p>
       </div>
       <div class="stat">
         <h3><%= profile.following %></h3>
-        <p>Following</p>
+        <p>دنبال‌شونده‌ها</p>
       </div>
       <div class="stat">
         <h3><%= profile.posts %></h3>
-        <p>Posts</p>
+        <p>پست‌ها</p>
       </div>
     </div>
   <% } %>
+
+  <div class="hashtag-management">
+    <h3>هشتگ‌ها</h3>
+    <form action="/add-hashtag" method="POST">
+      <input type="text" name="hashtag" placeholder="اضافه کردن هشتگ" required>
+      <button type="submit">اضافه کردن</button>
+    </form>
+    <ul>
+      <% hashtags.forEach(hashtag => { %>
+        <li>
+          <%= hashtag %>
+          <form action="/remove-hashtag" method="POST" style="display: inline;">
+            <input type="hidden" name="hashtag" value="<%= hashtag %>">
+            <button type="submit" class="remove-btn">&times;</button>
+          </form>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
 
   <div class="bot-controls">
     <form id="start-form" action="/start" method="POST">
       <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
       <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
-        <option value="hashtag">Hashtag</option>
-        <option value="explore">Explore</option>
+        <option value="hashtag">هشتگ</option>
+        <option value="explore">اکسپلور</option>
       </select>
-      <input type="text" name="target" placeholder="Enter hashtag" <%= !selectedAccount ? 'disabled' : '' %>>
-      <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>Start</button>
+      <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
+        <% hashtags.forEach(hashtag => { %>
+          <option value="<%= hashtag %>"><%= hashtag %></option>
+        <% }) %>
+      </select>
+      <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
+      <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
     </form>
     <form id="stop-form" action="/stop" method="POST">
       <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
-      <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>Stop</button>
+      <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
     </form>
   </div>
 
   <div class="status-panel">
-    <h3>Bot Status</h3>
-    <p><strong>Status:</strong> <span id="status">Idle</span></p>
-    <p><strong>Message:</strong> <span id="message"></span></p>
+    <h3>وضعیت ربات</h3>
+    <p><strong>وضعیت:</strong> <span id="status">بیکار</span></p>
+  </div>
+
+  <div class="activity-log">
+    <h3>گزارش فعالیت</h3>
+    <ul id="log-list"></ul>
   </div>
 
   <% if (!selectedAccount) { %>
     <div class="add-account-section">
-      <p>Please add an account to start using the bot.</p>
-      <button id="add-account-btn">Add Account</button>
+      <p>لطفا برای استفاده از ربات یک حساب کاربری اضافه کنید.</p>
+      <button id="add-account-btn">اضافه کردن حساب</button>
     </div>
   <% } %>
 </div>
@@ -72,14 +103,14 @@
 <div id="add-account-modal" class="modal">
   <div class="modal-content">
     <span class="close-btn">&times;</span>
-    <h2>Add Account</h2>
+    <h2>اضافه کردن حساب</h2>
     <% if (typeof error !== 'undefined' && error) { %>
       <p class="error"><%= error %></p>
     <% } %>
     <form action="/add-account" method="POST">
-      <input type="text" name="username" placeholder="Username" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Add Account</button>
+      <input type="text" name="username" placeholder="نام کاربری" required>
+      <input type="password" name="password" placeholder="رمز عبور" required>
+      <button type="submit">اضافه کردن حساب</button>
     </form>
   </div>
 </div>
@@ -87,9 +118,10 @@
 <script>
   const socket = new WebSocket('ws://' + window.location.host);
   const statusEl = document.getElementById('status');
-  const messageEl = document.getElementById('message');
+  const logList = document.getElementById('log-list');
+  const onlineIndicator = document.getElementById('online-indicator');
   const typeSelect = document.querySelector('select[name="type"]');
-  const targetInput = document.querySelector('input[name="target"]');
+  const targetInput = document.querySelector('select[name="target"]');
   const addAccountBtn = document.getElementById('add-account-btn');
   const modal = document.getElementById('add-account-modal');
   const closeBtn = document.querySelector('.close-btn');
@@ -125,6 +157,16 @@
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     statusEl.textContent = data.status;
-    messageEl.textContent = data.message;
+
+    if (data.status === 'running') {
+      onlineIndicator.style.display = 'inline-block';
+    } else {
+      onlineIndicator.style.display = 'none';
+    }
+
+    const logItem = document.createElement('li');
+    logItem.textContent = `[${new Date().toLocaleTimeString()}] ${data.message}`;
+    logList.appendChild(logItem);
+    logList.scrollTop = logList.scrollHeight;
   };
 </script>
