@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { instagramService } = require('../services/instagram.service');
 const { botService } = require('../services/bot');
+const { IgLoginTwoFactorRequiredError, IgLoginBadPasswordError } = require('instagram-private-api');
 
 router.get('/', async (req, res) => {
   const accounts = await instagramService.getAccounts();
@@ -23,7 +24,15 @@ router.post('/login', async (req, res) => {
     req.session.selectedUsername = username;
     res.redirect('/');
   } catch (error) {
-    res.status(400).send(error.message);
+    if (error instanceof IgLoginTwoFactorRequiredError || error.message.includes('challenge_required')) {
+      const accounts = await instagramService.getAccounts();
+      res.render('dashboard', { accounts, selectedAccount: null, profile: null, error: 'Challenge required. Please log in to your Instagram account on your phone to complete the security check.' });
+    } else if (error instanceof IgLoginBadPasswordError) {
+      const accounts = await instagramService.getAccounts();
+      res.render('dashboard', { accounts, selectedAccount: null, profile: null, error: 'Incorrect password.' });
+    } else {
+      res.status(400).send(error.message);
+    }
   }
 });
 
@@ -34,7 +43,15 @@ router.post('/add-account', async (req, res) => {
     req.session.selectedUsername = username;
     res.redirect('/');
   } catch (error) {
-    res.status(400).send(error.message);
+    if (error instanceof IgLoginTwoFactorRequiredError || error.message.includes('challenge_required')) {
+      const accounts = await instagramService.getAccounts();
+      res.render('dashboard', { accounts, selectedAccount: null, profile: null, error: 'Challenge required. Please log in to your Instagram account on your phone to complete the security check.' });
+    } else if (error instanceof IgLoginBadPasswordError) {
+      const accounts = await instagramService.getAccounts();
+      res.render('dashboard', { accounts, selectedAccount: null, profile: null, error: 'Incorrect password.' });
+    } else {
+      res.status(400).send(error.message);
+    }
   }
 });
 

@@ -1,5 +1,9 @@
 <link rel="stylesheet" href="/css/style.css">
 <div class="dashboard">
+  <div class="header">
+    <h1>Instagram Bot</h1>
+  </div>
+
   <% if (selectedAccount) { %>
     <div class="account-switcher">
       <form action="/switch-account" method="POST">
@@ -58,6 +62,9 @@
   <% } else { %>
     <div class="add-account-form">
       <h2>Add Account</h2>
+      <% if (typeof error !== 'undefined' && error) { %>
+        <p class="error"><%= error %></p>
+      <% } %>
       <form action="/add-account" method="POST">
         <input type="text" name="username" placeholder="Username" required>
         <input type="password" name="password" placeholder="Password" required>
@@ -74,13 +81,15 @@
   const typeSelect = document.querySelector('select[name="type"]');
   const targetInput = document.querySelector('input[name="target"]');
 
-  typeSelect.addEventListener('change', () => {
-    if (typeSelect.value === 'explore') {
-      targetInput.style.display = 'none';
-    } else {
-      targetInput.style.display = 'block';
-    }
-  });
+  if (typeSelect) {
+    typeSelect.addEventListener('change', () => {
+      if (typeSelect.value === 'explore') {
+        targetInput.style.display = 'none';
+      } else {
+        targetInput.style.display = 'block';
+      }
+    });
+  }
 
   socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
