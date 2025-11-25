@@ -1,60 +1,106 @@
-/* Instagram-like styles */
+/* General Body & Container for Responsiveness */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: #fafafa;
+  margin: 0;
+  padding: 1rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  margin: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .dashboard {
   width: 100%;
-  max-width: 375px; /* iPhone X width */
-  height: 100%;
-  max-height: 812px; /* iPhone X height */
+  max-width: 450px;
+  height: 90vh;
+  max-height: 850px;
   background-color: #fff;
   border: 1px solid #dbdbdb;
-  border-radius: 30px;
-  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-  padding: 20px;
-  box-sizing: border-box;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.header {
-  text-align: center;
-  padding: 10px 0;
+/* Tab Navigation */
+.tab-nav {
+  display: flex;
   border-bottom: 1px solid #dbdbdb;
 }
 
-.header h1 {
-  font-size: 20px;
+.tab-link {
+  flex: 1;
+  padding: 15px;
+  text-align: center;
+  background-color: #fff;
+  border: none;
+  cursor: pointer;
   font-weight: 600;
-  margin: 0;
+  color: #8e8e8e;
+  font-size: 16px;
+  transition: color 0.2s;
 }
 
-.account-switcher select {
+.tab-link.active {
+  color: #262626;
+  border-bottom: 2px solid #262626;
+}
+
+/* Tab Content */
+.tab-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Common element styles */
+input[type="text"], input[type="password"], input[type="time"], select {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #dbdbdb;
-  border-radius: 5px;
-  background-color: #fafafa;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
 }
 
+button {
+  width: 100%;
+  padding: 12px;
+  background-color: #0095f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  background-color: #b2dffc;
+}
+
+/* Specific component styles */
 .profile-info {
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 
 .profile-info img {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  margin-right: 20px;
+  margin-right: 15px;
 }
 
 .profile-stats {
@@ -62,22 +108,6 @@ body {
   justify-content: space-around;
   text-align: center;
   margin-bottom: 20px;
-}
-
-.bot-controls, .status-panel, .add-account-section {
-  padding: 15px;
-  border: 1px solid #efefef;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-
-.remove-btn {
-  background-color: transparent;
-  border: none;
-  color: #ed4956;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0 5px;
 }
 
 .online-indicator {
@@ -89,56 +119,33 @@ body {
   margin-left: 10px;
 }
 
-button {
-  background-color: #0095f6;
-  color: white;
+.hashtag-management ul {
+  list-style: none;
+  padding: 0;
+}
+
+.hashtag-management li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #efefef;
+}
+
+.remove-btn {
+  background-color: transparent;
   border: none;
-  border-radius: 5px;
-  padding: 10px 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-button:disabled {
-  background-color: #b2dffc;
-}
-
-input[type="text"], input[type="password"], select {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #dbdbdb;
-  border-radius: 5px;
-  margin-bottom: 10px;
-  box-sizing: border-box;
-}
-
-select[data-selected-account] {
-  position: relative;
-}
-
-select[data-selected-account]::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  background-color: #28a745;
-  border-radius: 50%;
-}
-
-.error {
   color: #ed4956;
-  font-size: 14px;
-  margin: 10px 0;
-  text-align: center;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: auto;
 }
 
 .activity-log {
   border: 1px solid #efefef;
-  border-radius: 10px;
-  padding: 15px;
+  border-radius: 8px;
+  padding: 10px;
   margin-top: 15px;
   height: 200px;
   overflow-y: scroll;
@@ -150,32 +157,30 @@ select[data-selected-account]::before {
   margin: 0;
 }
 
-.activity-log li {
-  padding: 5px 0;
-  border-bottom: 1px solid #efefef;
-  font-size: 14px;
-}
-
+/* Modal styles */
 .modal {
-  display: none;
+  display: none; /* Initially hidden */
   position: fixed;
-  z-index: 1;
+  z-index: 100;
   left: 0;
   top: 0;
   width: 100%;
   height: 100%;
-  overflow: auto;
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.active {
+  display: flex; /* Show with flex for centering */
 }
 
 .modal-content {
-  background-color: #fefefe;
-  margin: 15% auto;
+  background-color: #fff;
   padding: 20px;
-  border: 1px solid #888;
-  width: 80%;
+  border-radius: 12px;
+  width: 90%;
   max-width: 350px;
-  border-radius: 10px;
 }
 
 .close-btn {
@@ -183,11 +188,5 @@ select[data-selected-account]::before {
   float: right;
   font-size: 28px;
   font-weight: bold;
-}
-
-.close-btn:hover,
-.close-btn:focus {
-  color: black;
-  text-decoration: none;
   cursor: pointer;
 }

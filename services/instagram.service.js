@@ -3,7 +3,6 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const accountsFilePath = path.join(__dirname, '../data/accounts.json');
-const hashtagsFilePath = path.join(__dirname, '../data/hashtags.json');
 
 class InstagramService {
   constructor() {
@@ -92,32 +91,6 @@ class InstagramService {
   async likeComment(username, commentId) {
     const ig = await this.getApiClient(username);
     return ig.media.likeComment(commentId);
-  }
-
-  async getHashtags() {
-    try {
-      const data = await fs.readFile(hashtagsFilePath, 'utf8');
-      return JSON.parse(data);
-    } catch (error) {
-      if (error.code === 'ENOENT') {
-        return [];
-      }
-      throw error;
-    }
-  }
-
-  async addHashtag(hashtag) {
-    const hashtags = await this.getHashtags();
-    if (!hashtags.includes(hashtag)) {
-      hashtags.push(hashtag);
-      await fs.writeFile(hashtagsFilePath, JSON.stringify(hashtags, null, 2));
-    }
-  }
-
-  async removeHashtag(hashtag) {
-    let hashtags = await this.getHashtags();
-    hashtags = hashtags.filter(h => h !== hashtag);
-    await fs.writeFile(hashtagsFilePath, JSON.stringify(hashtags, null, 2));
   }
 }
 
