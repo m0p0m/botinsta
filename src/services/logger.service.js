@@ -30,6 +30,7 @@ class Logger {
       const method = req.method;
       const url = req.originalUrl;
       const ip = req.ip;
+      const logger = this; // ذخیره reference به logger
 
       // ثبت درخواست
       console.log(`📨 ${method} ${url} - IP: ${ip}`);
@@ -45,7 +46,7 @@ class Logger {
 
         // ثبت خطاهای ورود
         if (url.includes('add-account') && status !== 302) {
-          this.logError({
+          logger.logError({
             timestamp: new Date().toISOString(),
             method,
             url,
