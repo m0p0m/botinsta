@@ -17,12 +17,12 @@ const wss = new WebSocket.Server({ server });
 
 // Configure View Engine
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
+app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
 // Middleware - Static Files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Middleware - Logger
 app.use(Logger.middleware());
