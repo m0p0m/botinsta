@@ -1,147 +1,968 @@
 <div class="dashboard-main">
-  <!-- تب‌ها -->
-  <div class="tab-nav">
-    <button class="tab-link active" data-tab="account">اکانت</button>
-    <button class="tab-link" data-tab="hashtags">هشتگ‌ها</button>
-    <button class="tab-link" data-tab="bot">کنترل ربات</button>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-content"><%= error %></div>
+    </div>
+  <% } %>
+
+  <!-- Header Section -->
+  <div class="dashboard-header">
+    <h1>🤖 داشبورد ربات اینستاگرام</h1>
+    <% if(selectedAccount) { %>
+      <div class="account-badge">
+        <span class="badge-icon">👤</span>
+        <span class="badge-text"><%= selectedAccount %></span>
+      </div>
+    <% } %>
   </div>
 
-  <div class="tab-content">
-    <!-- تب اکانت -->
-    <div id="account" class="tab-pane active">
-      <div class="account-section-list">
-        <h3>مدیریت اکانت‌ها</h3>
+  <% if(selectedAccount && accounts) { %>
+    <!-- Profile Stats Section -->
+    <div class="stats-section">
+      <div class="stat-box">
+        <div class="stat-icon">📸</div>
+        <div class="stat-info">
+          <p class="stat-label">تعداد پست‌ها</p>
+          <p class="stat-value" id="post-count">-</p>
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-icon">👥</div>
+        <div class="stat-info">
+          <p class="stat-label">دنبال‌کننده‌ها</p>
+          <p class="stat-value" id="follower-count">-</p>
+        </div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-icon">🔗</div>
+        <div class="stat-info">
+          <p class="stat-label">دنبال می‌کند</p>
+          <p class="stat-value" id="following-count">-</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-link active" data-tab="accounts">🔐 اکانت‌ها</button>
+      <button class="tab-link" data-tab="hashtags">🏷️ هشتگ‌ها</button>
+      <button class="tab-link" data-tab="bot">🤖 ربات</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Accounts Tab -->
+      <div id="accounts" class="tab-pane active">
+        <div class="section-title">
+          <h2>مدیریت اکانت‌ها</h2>
+          <p class="section-desc">اکانت‌های Instagram خود را مدیریت کنید</p>
+        </div>
         <ul class="accounts-list">
-          <% if (accounts && accounts.length) { %>
-            <% accounts.forEach(function(account, idx){ %>
-              <li>
-                <!-- نقطه وضعیت تستی سبز/قرمز (random با idx) -->
-                <span class="account-dot <%= (idx % 2 === 0 ? 'active' : 'banned') %>"></span>
-                <span class="account-user"><%= account.username %></span>
-                <form action="/switch-account" method="POST" style="display: inline">
+          <% accounts.forEach(function(account, idx){ %>
+            <li>
+              <span class="account-dot <%= (idx % 2 === 0 ? 'active' : 'inactive') %>"></span>
+              <span class="account-user"><%= account.username %></span>
+              <% if(selectedAccount === account.username){ %>
+                <span class="account-switch selected">✓ انتخاب شده</span>
+              <% }else{ %>
+                <form action="/switch-account" method="POST" style="display:inline">
                   <input type="hidden" name="username" value="<%= account.username %>">
-                  <button type="submit" class="account-switch <%= selectedAccount && selectedAccount.username === account.username ? 'selected' : '' %>" title="انتخاب">انتخاب</button>
+                  <button type="submit" class="account-switch">انتخاب</button>
                 </form>
-                <form action="/remove-account" method="POST" style="display: inline">
-                  <input type="hidden" name="username" value="<%= account.username %>">
+              <% } %>
+              <form action="/remove-account" method="POST" style="display:inline">
+                <input type="hidden" name="username" value="<%= account.username %>">
+                <button class="remove-btn" title="حذف">🗑</button>
+              </form>
+            </li>
+          <% }) %>
+        </ul>
+        <button id="add-account-btn" class="btn-primary btn-add-account">+ افزودن اکانت جدید</button>
+      </div>
+
+      <!-- Hashtags Tab -->
+      <div id="hashtags" class="tab-pane">
+        <div class="section-title">
+          <h2>مدیریت هشتگ‌ها</h2>
+          <p class="section-desc">هشتگ‌هایی را برای ربات انتخاب کنید</p>
+        </div>
+        <form action="/add-hashtag" method="POST" class="hashtag-add-form">
+          <input type="text" name="hashtag" placeholder="هشتگ جدید را وارد کنید..." required>
+          <button type="submit" class="btn-add">افزودن</button>
+        </form>
+        <ul class="hashtags-list">
+          <% if(hashtags && hashtags.length) { %>
+            <% hashtags.forEach(function(hashtag){ %>
+              <li>
+                <span class="hashtag-tag">#<%= hashtag %></span>
+                <form action="/remove-hashtag" method="POST" style="display:inline;">
+                  <input type="hidden" name="hashtag" value="<%= hashtag %>">
                   <button class="remove-btn" title="حذف">🗑</button>
                 </form>
               </li>
             <% }) %>
           <% } else { %>
-            <li style="text-align:center; opacity:.7;">هنوز اکانتی ثبت نشده</li>
+            <li style="opacity:.6;text-align:center;padding:20px;">هنوز هیچ هشتگی ثبت نشده</li>
           <% } %>
         </ul>
-        <button id="add-account-btn">+ افزودن اکانت جدید</button>
       </div>
-      <!-- مودال افزودن اکانت -->
-      <div id="add-account-modal" class="modal">
-        <div class="modal-content">
-          <span class="close-btn">&times;</span>
-          <h2>افزودن اکانت جدید</h2>
-          <% if (typeof error !== 'undefined' && error) { %>
-            <p class="form-error"><%= error %></p>
-          <% } %>
-          <form action="/add-account" method="POST">
-            <input type="text" name="username" placeholder="نام کاربری" required>
-            <input type="password" name="password" placeholder="رمز عبور" required>
-            <button type="submit">افزودن اکانت</button>
+
+      <!-- Bot Tab -->
+      <div id="bot" class="tab-pane">
+        <div class="section-title">
+          <h2>کنترل ربات</h2>
+          <p class="section-desc">فعالیت‌های خودکار را کنترل کنید</p>
+        </div>
+
+        <div class="bot-controls">
+          <form id="start-form" action="/start" method="POST" class="control-form">
+            <input type="hidden" name="username" value="<%= selectedAccount %>">
+            
+            <div class="form-group">
+              <label>نوع عملیات</label>
+              <select name="type" required>
+                <option value="">انتخاب کنید...</option>
+                <option value="hashtag">🏷️ هشتگ</option>
+                <option value="explore">🔍 اکسپلور</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>هدف</label>
+              <select name="target" required>
+                <option value="">هدف را انتخاب کنید...</option>
+                <% if(hashtags && hashtags.length) { %>
+                  <% hashtags.forEach(function(hashtag) { %>
+                    <option value="<%= hashtag %>">#<%= hashtag %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option disabled>هیچ هشتگی موجود نیست</option>
+                <% } %>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>زمان شروع (اختیاری)</label>
+              <input type="time" name="startTime" placeholder="زمان شروع">
+            </div>
+
+            <button type="submit" class="btn btn-start">▶️ شروع ربات</button>
+          </form>
+
+          <form id="stop-form" action="/stop" method="POST">
+            <input type="hidden" name="username" value="<%= selectedAccount %>">
+            <button type="submit" class="btn btn-stop">⏹️ توقف ربات</button>
           </form>
         </div>
-      </div>
-    </div>
-    <!-- تب هشتگ -->
-    <div id="hashtags" class="tab-pane">
-      <div class="hashtag-management">
-        <h3>مدیریت هشتگ‌ها</h3>
-        <form action="/add-hashtag" method="POST" class="hashtag-add-form">
-          <input type="text" name="hashtag" placeholder="هشتگ جدید..." required>
-          <button type="submit">افزودن</button>
-        </form>
-        <ul class="hashtags-list">
-          <% if(hashtags && hashtags.length) { %>
-            <% hashtags.forEach(function(hashtag){ %>
-            <li>
-              <span class="hashtag-title">#<%= hashtag %></span>
-              <form action="/remove-hashtag" method="POST" style="display:inline;">
-                <input type="hidden" name="hashtag" value="<%= hashtag %>">
-                <button class="remove-btn" title="حذف">🗑</button>
-              </form>
-            </li>
-            <% }) %>
-          <% } else { %>
-            <li style="opacity:.7;text-align:center;">هنوز هیچ هشتگی ثبت نشده</li>
-          <% } %>
-        </ul>
-      </div>
-    </div>
-    <!-- تب کنترل ربات -->
-    <div id="bot" class="tab-pane">
-      <div class="bot-controls">
-        <h3>کنترل ربات</h3>
-        <form id="start-form" action="/start" method="POST">
-          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
-          <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
-            <option value="hashtag">هشتگ</option>
-            <option value="explore">اکسپلور</option>
-          </select>
-          <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
-            <% hashtags.forEach(function(hashtag) { %>
-              <option value="<%= hashtag %>"><%= hashtag %></option>
-            <% }) %>
-          </select>
-          <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
-          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
-        </form>
-        <form id="stop-form" action="/stop" method="POST">
-          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
-          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
-        </form>
+
+        <!-- Status Panel -->
         <div class="status-panel">
-          <h3>وضعیت ربات</h3>
-          <p><strong>وضعیت:</strong> <span id="status">غیرفعال</span></p>
+          <h3>📊 وضعیت فعلی</h3>
+          <div class="status-content">
+            <div class="status-row">
+              <span class="status-label">وضعیت ربات:</span>
+              <span id="bot-status" class="status-value inactive">🔴 غیرفعال</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">فعالیت:</span>
+              <span id="bot-activity" class="status-value">بدون فعالیت</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">آخرین به‌روزرسانی:</span>
+              <span id="bot-updated" class="status-value">-</span>
+            </div>
+          </div>
         </div>
-        <div class="activity-log">
-          <h3>گزارش فعالیت</h3>
-          <ul id="log-list"></ul>
+
+        <!-- Activity Log -->
+        <div class="activity-log-panel">
+          <h3>📝 گزارش فعالیت (آخرین ۲۰ مورد)</h3>
+          <div class="activity-log" id="activity-log">
+            <div class="log-entry">
+              <span class="log-time">-</span>
+              <span class="log-msg">منتظر شروع ربات...</span>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
+
+  <% } else { %>
+    <!-- Empty State -->
+    <div class="empty-state">
+      <div class="empty-icon">🚀</div>
+      <h2>خوش‌آمدید!</h2>
+      <p>برای شروع، ابتدا یک اکانت Instagram اضافه کنید</p>
+      <button id="add-account-btn" class="btn-primary btn-large">+ افزودن اکانت اول</button>
+    </div>
+  <% } %>
+
+  <!-- Add Account Modal -->
+  <div id="add-account-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>🔐 افزودن اکانت جدید</h2>
+      <p class="modal-subtitle">نام کاربری و رمز عبور اینستاگرام خود را وارد کنید</p>
+      
+      <form action="/add-account" method="POST" class="login-modal-form">
+        <div class="form-group">
+          <label for="modal-username">نام کاربری Instagram</label>
+          <input 
+            type="text" 
+            id="modal-username"
+            name="username" 
+            placeholder="نام کاربری" 
+            required
+            minlength="3"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="modal-password">رمز عبور</label>
+          <input 
+            type="password" 
+            id="modal-password"
+            name="password" 
+            placeholder="رمز عبور" 
+            required
+            minlength="6"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large">ورود و اضافه کردن</button>
+      </form>
+
+      <div class="modal-info">
+        <p class="info-item">
+          <span class="info-icon">🔒</span>
+          رمز عبور شما کاملاً ایمن است
+        </p>
+        <p class="info-item">
+          <span class="info-icon">✅</span>
+          اگر دو مرحله‌ای فعال دارید، اپ Instagram را بررسی کنید
+        </p>
       </div>
     </div>
   </div>
-
 </div>
 
+<style>
+.dashboard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-error {
+  background-color: #fee;
+  border-left: 4px solid #f44336;
+  color: #c33;
+}
+
+.alert-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #f0f4f8;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #0A84FF;
+}
+
+.account-badge {
+  background: linear-gradient(90deg, #0A84FF 0%, #31c48d 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.badge-icon {
+  font-size: 1rem;
+}
+
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.stat-box {
+  background: linear-gradient(135deg, #f0f7ff 0%, #f5faff 100%);
+  border: 1.5px solid #e0e8ff;
+  border-radius: 12px;
+  padding: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.3s;
+}
+
+.stat-box:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(10, 132, 255, 0.15);
+  border-color: #0A84FF;
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  margin: 0.3rem 0 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0A84FF;
+}
+
+.section-title {
+  margin-bottom: 1rem;
+}
+
+.section-title h2 {
+  margin: 0 0 0.3rem 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.section-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #0A84FF 0%, #31c48d 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(10, 132, 255, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-large {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+.btn-add-account {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f5faff 100%);
+  border-radius: 16px;
+  border: 2px dashed #e0e8ff;
+}
+
+.empty-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h2 {
+  color: #0A84FF;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-state p {
+  color: #666;
+  margin: 0 0 1.5rem 0;
+}
+
+.bot-controls {
+  background: #f8fbff;
+  border-radius: 12px;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.control-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.form-group select,
+.form-group input {
+  padding: 0.8rem;
+  border: 1.5px solid #e0e8ff;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  transition: all 0.3s;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+}
+
+.btn {
+  padding: 0.8rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-start {
+  background: linear-gradient(90deg, #31c48d 0%, #09eaea 100%);
+  color: white;
+}
+
+.btn-start:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(49, 196, 141, 0.3);
+}
+
+.btn-stop {
+  background: linear-gradient(90deg, #ff3b30 0%, #ff6b6b 100%);
+  color: white;
+}
+
+.btn-stop:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 59, 48, 0.3);
+}
+
+.btn-add {
+  background: #0A84FF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.3s;
+}
+
+.btn-add:hover {
+  background: #0066cc;
+  transform: translateY(-2px);
+}
+
+.status-panel {
+  background: linear-gradient(135deg, #fff9f0 0%, #f9f5ff 100%);
+  border: 1.5px solid #f0e8ff;
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.status-panel h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #0A84FF;
+}
+
+.status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #f0e8ff;
+}
+
+.status-label {
+  color: #666;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.status-value {
+  font-weight: 600;
+  color: #0A84FF;
+  font-size: 0.95rem;
+}
+
+.status-value.inactive {
+  color: #999;
+}
+
+.activity-log-panel {
+  background: linear-gradient(135deg, #fff9f0 0%, #f9f5ff 100%);
+  border: 1.5px solid #f0e8ff;
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.activity-log-panel h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #0A84FF;
+}
+
+.activity-log {
+  background: white;
+  border-radius: 8px;
+  padding: 0.8rem;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid #f0e8ff;
+}
+
+.log-entry {
+  display: flex;
+  gap: 0.8rem;
+  font-size: 0.85rem;
+  padding: 0.6rem;
+  background: #f8fbff;
+  border-radius: 6px;
+  border-left: 3px solid #0A84FF;
+}
+
+.log-time {
+  color: #999;
+  font-weight: 600;
+  min-width: 55px;
+  flex-shrink: 0;
+}
+
+.log-msg {
+  color: #333;
+  flex: 1;
+}
+
+.hashtag-add-form {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.hashtag-add-form input {
+  flex: 1;
+  padding: 0.8rem;
+  border: 1.5px solid #e0e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.hashtag-add-form input:focus {
+  outline: none;
+  border-color: #0A84FF;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+}
+
+.hashtags-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.hashtags-list li {
+  background: white;
+  border: 1.5px solid #e0e8f0;
+  border-radius: 8px;
+  padding: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+}
+
+.hashtags-list li:hover {
+  border-color: #0A84FF;
+  box-shadow: 0 2px 8px rgba(10, 132, 255, 0.1);
+}
+
+.hashtag-tag {
+  flex: 1;
+  color: #0A84FF;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  color: #ff3b30;
+  font-size: 1.2rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+
+.remove-btn:hover {
+  background: #ffe7e7;
+  color: #b20000;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  justify-content: center;
+  align-items: center;
+  animation: fadeInModal 0.3s;
+}
+
+.modal.show-modal {
+  display: flex !important;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0.2px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  max-width: 90vw;
+  width: 380px;
+  box-shadow: 0 15px 50px rgba(10, 132, 255, 0.2);
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.close-btn {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.close-btn:hover {
+  color: #333;
+  transform: scale(1.1);
+}
+
+.modal-content h2 {
+  margin: 0 0 0.3rem 0;
+  font-size: 1.3rem;
+  color: #333;
+  text-align: center;
+}
+
+.modal-subtitle {
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.login-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.info-icon {
+  font-size: 1rem;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e0e8f0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0A84FF;
+}
+
+@media (max-width: 600px) {
+  .stats-section {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .modal-content {
+    width: 90vw;
+    max-width: 100%;
+    padding: 1.5rem;
+  }
+
+  .form-group,
+  .control-form {
+    gap: 0.7rem;
+  }
+
+  .btn {
+    font-size: 0.9rem;
+  }
+}
+</style>
+
 <script>
-// فعال/غیرفعال کردن تب‌ها و نمایش هر بخش
+// Tab Navigation
 const tabLinks = document.querySelectorAll('.tab-link');
 const tabPanes = document.querySelectorAll('.tab-pane');
+
 tabLinks.forEach(link => {
   link.addEventListener('click', () => {
-    const tab = link.dataset.tab;
+    const tabName = link.dataset.tab;
+    
+    // Update active tab link
     tabLinks.forEach(l => l.classList.remove('active'));
     link.classList.add('active');
+    
+    // Update active tab pane
     tabPanes.forEach(pane => {
-      if (pane.id === tab) {
+      pane.classList.remove('active');
+      if (pane.id === tabName) {
         pane.classList.add('active');
-      } else {
-        pane.classList.remove('active');
       }
     });
   });
 });
-// مودال افزودن اکانت
+
+// Modal Handling
 const addAccountBtn = document.getElementById('add-account-btn');
 const modal = document.getElementById('add-account-modal');
-const closeBtn = modal && modal.querySelector('.close-btn');
-if (addAccountBtn) {
-  addAccountBtn.addEventListener('click', () => { modal.classList.add('show-modal'); });
+const closeBtn = modal ? modal.querySelector('.close-btn') : null;
+
+if (addAccountBtn && modal) {
+  addAccountBtn.addEventListener('click', () => {
+    modal.classList.add('show-modal');
+  });
 }
+
 if (closeBtn && modal) {
-  closeBtn.addEventListener('click', () => { modal.classList.remove('show-modal'); });
-  window.addEventListener('click', (event) => {
-    if (event.target == modal) {
+  closeBtn.addEventListener('click', () => {
+    modal.classList.remove('show-modal');
+  });
+  
+  window.addEventListener('click', (e) => {
+    if (e.target === modal) {
       modal.classList.remove('show-modal');
     }
   });
+}
+
+// WebSocket for live updates
+function initializeWebSocket() {
+  try {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(protocol + '//' + window.location.host);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        updateBotStatus(data);
+      } catch (e) {
+        console.error('Failed to parse WebSocket message:', e);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      setTimeout(initializeWebSocket, 3000);
+    };
+  } catch (e) {
+    console.error('WebSocket initialization error:', e);
+  }
+}
+
+function updateBotStatus(data) {
+  const statusEl = document.getElementById('bot-status');
+  const activityEl = document.getElementById('bot-activity');
+  const updatedEl = document.getElementById('bot-updated');
+  const logEl = document.getElementById('activity-log');
+
+  if (data.status && statusEl) {
+    statusEl.textContent = data.status === 'running' ? '🟢 فعال' : '🔴 متوقف';
+    statusEl.className = `status-value ${data.status === 'running' ? 'active' : 'inactive'}`;
+  }
+
+  if (data.message && activityEl) {
+    activityEl.textContent = data.message;
+  }
+
+  if (data.message && logEl) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    const time = new Date().toLocaleTimeString('fa-IR');
+    entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${data.message}</span>`;
+    logEl.insertBefore(entry, logEl.firstChild);
+    
+    // Keep only last 20 entries
+    while (logEl.children.length > 20) {
+      logEl.removeChild(logEl.lastChild);
+    }
+  }
+
+  if (updatedEl) {
+    updatedEl.textContent = new Date().toLocaleTimeString('fa-IR');
+  }
+}
+
+// Initialize WebSocket when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.querySelector('.status-panel')) {
+      initializeWebSocket();
+    }
+  });
+} else {
+  if (document.querySelector('.status-panel')) {
+    initializeWebSocket();
+  }
 }
 </script>

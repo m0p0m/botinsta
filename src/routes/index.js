@@ -10,7 +10,16 @@ const ErrorHandler = require('../services/error-handler.service');
  * Fetches all necessary data like accounts, profile, and hashtags.
  * @route GET /
  */
-router.get('/', (req, res) => { res.redirect('/accounts'); });
+router.get('/', async (req, res) => {
+  const accounts = await instagramService.getAccounts();
+  const hashtags = await hashtagService.getHashtags();
+  res.render('dashboard', {
+    accounts,
+    hashtags,
+    selectedAccount: req.session.selectedUsername || null,
+    error: req.query.error
+  });
+});
 
 router.get('/accounts', async (req, res) => {
   const accounts = await instagramService.getAccounts();
@@ -94,6 +103,23 @@ router.post('/add-account', async (req, res) => {
 router.post('/switch-account', (req, res) => {
   req.session.selectedUsername = req.body.username;
   res.redirect('/');
+});
+
+/**
+ * Removes an Instagram account.
+ * @route POST /remove-account
+ */
+router.post('/remove-account', async (req, res) => {
+  const { username } = req.body;
+  try {
+    await instagramService.removeAccount(username);
+    if (req.session.selectedUsername === username) {
+      req.session.selectedUsername = null;
+    }
+    res.redirect('/');
+  } catch (error) {
+    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
 });
 
 /**

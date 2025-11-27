@@ -296,6 +296,27 @@ class InstagramService {
       throw error;
     }
   }
+
+  async removeAccount(username) {
+    try {
+      if (!username) {
+        throw new Error('نام کاربری الزامی است');
+      }
+
+      const accounts = await this.getAccounts();
+      const filteredAccounts = accounts.filter(acc => acc.username !== username);
+
+      if (filteredAccounts.length === accounts.length) {
+        throw new Error(`حساب "${username}" پیدا نشد`);
+      }
+
+      await fs.writeFile(accountsFilePath, JSON.stringify(filteredAccounts, null, 2), 'utf8');
+      console.log(`✅ حساب "${username}" حذف شد`);
+    } catch (error) {
+      console.error('❌ خطا در حذف حساب:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = { InstagramService, instagramService: new InstagramService() };
