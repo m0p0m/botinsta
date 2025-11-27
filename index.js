@@ -24,13 +24,10 @@ app.set('layout', 'layout');
 // Middleware - Static Files
 app.use(express.static(path.join(__dirname, 'public')));
 
-<<<<<<< HEAD
 
 // Middleware - Logger
 app.use(Logger.middleware());
 
-=======
->>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
 // Middleware - Body Parser
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -70,14 +67,10 @@ app.get('/debug-css', (req, res) => {
 // Start Server
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-<<<<<<< HEAD
   console.log('\n' + '='.repeat(60));
   console.log('🤖 ربات اینستاگرام');
   console.log('='.repeat(60));
   console.log(`✓ سرور در حال اجرا است: http://localhost:${port}`);
   console.log('📱 آپ Instagram را باز کنید و آماده‌ی تأیید دو مرحله‌ای باشید');
   console.log('='.repeat(60) + '\n');
-=======
-  console.log(`✓ Server is running on http://localhost:${port}`);
->>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
 });

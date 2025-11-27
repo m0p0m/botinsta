@@ -3,10 +3,7 @@ const router = express.Router();
 const { instagramService } = require('../services/instagram.service');
 const { botService } = require('../services/bot.service');
 const { hashtagService } = require('../services/hashtag.service');
-<<<<<<< HEAD
 const ErrorHandler = require('../services/error-handler.service');
-=======
->>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
 
 /**
  * Renders the main dashboard page.
@@ -48,11 +45,7 @@ router.get('/login', (req, res) => {
 
 /**
  * Handles the addition of a new Instagram account.
-<<<<<<< HEAD
  * Logs the user in and saves the session with comprehensive error handling.
-=======
- * Logs the user in and saves the session.
->>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
  * @route POST /add-account
  */
 router.post('/add-account', async (req, res) => {
@@ -87,15 +80,11 @@ router.post('/add-account', async (req, res) => {
     return res.redirect('/?success=حساب با موفقیت اضافه شد');
 
   } catch (error) {
-<<<<<<< HEAD
     res.status(400).send(error.message);
     ErrorHandler.logError('ورود حساب Instagram', error);
     
     const userFriendlyError = ErrorHandler.formatErrorForDisplay(error);
     return res.render('login', { error: userFriendlyError });
-=======
-    res.render('login', { error: error.message });
->>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
   }
 });
 
