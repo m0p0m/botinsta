@@ -80,7 +80,6 @@ router.post('/add-account', async (req, res) => {
     return res.redirect('/?success=حساب با موفقیت اضافه شد');
 
   } catch (error) {
-    res.status(400).send(error.message);
     ErrorHandler.logError('ورود حساب Instagram', error);
     
     const userFriendlyError = ErrorHandler.formatErrorForDisplay(error);

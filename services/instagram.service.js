@@ -19,19 +19,6 @@ const INSTAGRAM_USER_AGENTS = [
 class InstagramService {
   constructor() {
     this.ig = new IgApiClient();
-    this.setupProxyRules();
-  }
-
-  // تنظیم Proxy Rules برای درخواست‌های واقعی‌تر
-  setupProxyRules() {
-    this.ig.request.end$.subscribe({
-      next: (response) => {
-        console.log(`📤 Request: ${response.request.method} ${response.request.url}`);
-      },
-      error: (error) => {
-        console.error(`❌ Request Error:`, error.message);
-      }
-    });
   }
 
   // تصحیح Device برای تطابق بیشتر با اپ اصلی Instagram

@@ -24,7 +24,6 @@ app.set('layout', 'layout');
 // Middleware - Static Files
 app.use(express.static(path.join(__dirname, 'public')));
 
-
 // Middleware - Logger
 app.use(Logger.middleware());
 
