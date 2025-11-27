@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "jest"
+    "test": "jest",
+    "test:login": "node test-login.js",
+    "dev": "node index.js"
   },
   "repository": {
     "type": "git",
