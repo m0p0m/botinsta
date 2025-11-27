@@ -8,6 +8,7 @@ const expressLayouts = require('express-ejs-layouts');
 
 const { instagramService } = require('./services/instagram.service');
 const Logger = require('./services/logger.service');
+const botManager = require('./services/bot-manager.service');
 const routes = require('./routes/index');
 
 // Initialize Express and HTTP Server
@@ -72,4 +73,17 @@ server.listen(port, () => {
   console.log(`✓ سرور در حال اجرا است: http://localhost:${port}`);
   console.log('📱 آپ Instagram را باز کنید و آماده‌ی تأیید دو مرحله‌ای باشید');
   console.log('='.repeat(60) + '\n');
+
+  // بارگیری state و شروع ربات‌های background
+  botManager.loadState();
 });
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n\n🛑 سرور در حال خاموشی...');
+  server.close(() => {
+    console.log('✅ سرور بسته شد');
+    process.exit(0);
+  });
+});
+

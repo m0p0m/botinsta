@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { instagramService } = require('../services/instagram.service');
+const botManager = require('../services/bot-manager.service');
 const { botService } = require('../services/bot.service');
 const { hashtagService } = require('../services/hashtag.service');
 const ErrorHandler = require('../services/error-handler.service');
@@ -154,31 +155,53 @@ router.post('/remove-hashtag', async (req, res) => {
  * Starts the Instagram bot.
  * @route POST /start
  */
-router.post('/start', (req, res) => {
+router.post('/start', async (req, res) => {
   const { username, type, target, startTime } = req.body;
   if (!username) {
     return res.redirect('/?error=No account selected.');
   }
 
-  botService.start(username, type, target, (status, message) => {
-    req.wss.clients.forEach(client => {
-      if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(JSON.stringify({ status, message }));
-      }
-    });
-  }, {}, startTime);
+  try {
+    // شروع ربات و ذخیره state
+    await botManager.startBot(username, type, target, startTime);
 
-  res.redirect('/');
+    // ارسال update برای تمام connected clients
+    if (req.wss) {
+      req.wss.clients.forEach(client => {
+        if (client.readyState === 1) {
+          client.send(JSON.stringify({ status: 'running', message: `ربات برای ${username} شروع شد` }));
+        }
+      });
+    }
+
+    res.redirect('/');
+  } catch (error) {
+    console.error('❌ خطا در شروع ربات:', error);
+    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
 });
 
 /**
  * Stops the Instagram bot.
  * @route POST /stop
  */
-router.post('/stop', (req, res) => {
+router.post('/stop', async (req, res) => {
   const { username } = req.body;
   if (username) {
-    botService.stop(username);
+    try {
+      await botManager.stopBot(username);
+
+      // ارسال update برای تمام connected clients
+      if (req.wss) {
+        req.wss.clients.forEach(client => {
+          if (client.readyState === 1) {
+            client.send(JSON.stringify({ status: 'stopped', message: `ربات برای ${username} متوقف شد` }));
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ خطا در توقف ربات:', error);
+    }
   }
   res.redirect('/');
 });
