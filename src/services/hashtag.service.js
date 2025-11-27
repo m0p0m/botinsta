@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-const dataFilePath = path.join(__dirname, '..', 'data', 'hashtags.json');
+const dataFilePath = path.join(__dirname, '..', '..', 'data', 'hashtags.json');
 
 class HashtagService {
   /**

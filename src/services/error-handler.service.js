@@ -40,11 +40,14 @@ class ErrorHandlerService {
       };
     }
 
-    // Invalid Credentials
+    // Invalid Credentials / Bad Password
     if (errorType === 'invalid_user' ||
+        error.name === 'IgLoginBadPasswordError' ||
         responseStatus === 400 ||
         errorMessage.includes('The username you entered') ||
-        errorMessage.includes('incorrect')) {
+        errorMessage.includes('incorrect') ||
+        errorMessage.includes('help you get back') ||
+        errorMessage.includes('Bad Password')) {
       return {
         type: 'INVALID_CREDENTIALS',
         message: '❌ نام کاربری یا رمز عبور اشتباه است',
