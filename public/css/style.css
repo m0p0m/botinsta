@@ -334,3 +334,20 @@ button:disabled {
   border-radius:4px;line-height:1;
 }
 .remove-btn:hover{background:#ffe7e7;color:#b20000;}
+.hashtags-list{
+ list-style:none;margin:14px 0 0 0;padding:0;display:flex;flex-direction:column;gap:9px;}
+.hashtags-list li{
+  display:flex;align-items:center;gap:.5rem; background:#f7fafc; border-radius:9px; padding:7px 10px; box-shadow:0 1px 5px #5af2ff11; font-size:1.08rem;}
+.hashtag-title{flex:1;color:#157cfb;font-weight:500;}
+.hashtag-add-form{display:flex;gap:6px;align-items:center;margin-top:5px;}
+.hashtag-add-form input[type="text"]{flex:1;direction:ltr;font-size:.99em;margin-bottom:0;}
+.hashtag-add-form button{min-width:85px;padding:9px 0;}
+/* کنترل ربات */
+.bot-controls{padding:0 2px 0 2px; margin-bottom:8px;background:linear-gradient(92deg,#eafaff99 70%,#fff 100%);border-radius:12px;box-shadow:0 2px 10px #0c6ff522;}
+.bot-controls h3{font-size:1.04rem;color:#0a72c2;margin-top:21px;margin-bottom:16px;text-align:center;}
+.bot-controls form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;}
+.bot-controls input, .bot-controls select{flex:1;min-width:90px;}
+.bot-controls button{min-width:100px;background:linear-gradient(90deg,#0a84ff 0%,#31c48d 100%);}
+.status-panel{margin-bottom:11px;}
+.activity-log{margin-top:0;}
+@media (max-width:600px){.hashtags-list li,.bot-controls{font-size:.95em;}}

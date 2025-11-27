@@ -50,9 +50,63 @@
         </div>
       </div>
     </div>
-    <!-- تب هشتگ و تب ربات فعلاً بدون تغییر -->
-    <div id="hashtags" class="tab-pane"></div>
-    <div id="bot" class="tab-pane"></div>
+    <!-- تب هشتگ -->
+    <div id="hashtags" class="tab-pane">
+      <div class="hashtag-management">
+        <h3>مدیریت هشتگ‌ها</h3>
+        <form action="/add-hashtag" method="POST" class="hashtag-add-form">
+          <input type="text" name="hashtag" placeholder="هشتگ جدید..." required>
+          <button type="submit">افزودن</button>
+        </form>
+        <ul class="hashtags-list">
+          <% if(hashtags && hashtags.length) { %>
+            <% hashtags.forEach(function(hashtag){ %>
+            <li>
+              <span class="hashtag-title">#<%= hashtag %></span>
+              <form action="/remove-hashtag" method="POST" style="display:inline;">
+                <input type="hidden" name="hashtag" value="<%= hashtag %>">
+                <button class="remove-btn" title="حذف">🗑</button>
+              </form>
+            </li>
+            <% }) %>
+          <% } else { %>
+            <li style="opacity:.7;text-align:center;">هنوز هیچ هشتگی ثبت نشده</li>
+          <% } %>
+        </ul>
+      </div>
+    </div>
+    <!-- تب کنترل ربات -->
+    <div id="bot" class="tab-pane">
+      <div class="bot-controls">
+        <h3>کنترل ربات</h3>
+        <form id="start-form" action="/start" method="POST">
+          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
+          <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
+            <option value="hashtag">هشتگ</option>
+            <option value="explore">اکسپلور</option>
+          </select>
+          <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
+            <% hashtags.forEach(function(hashtag) { %>
+              <option value="<%= hashtag %>"><%= hashtag %></option>
+            <% }) %>
+          </select>
+          <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
+          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
+        </form>
+        <form id="stop-form" action="/stop" method="POST">
+          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
+          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
+        </form>
+        <div class="status-panel">
+          <h3>وضعیت ربات</h3>
+          <p><strong>وضعیت:</strong> <span id="status">غیرفعال</span></p>
+        </div>
+        <div class="activity-log">
+          <h3>گزارش فعالیت</h3>
+          <ul id="log-list"></ul>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
