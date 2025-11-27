@@ -1,0 +1,22 @@
+<div class="hashtag-management">
+  <h2>مدیریت هشتگ‌ها</h2>
+  <form action="/add-hashtag" method="POST" class="hashtag-add-form">
+    <input type="text" name="hashtag" placeholder="هشتگ جدید..." required>
+    <button type="submit">افزودن</button>
+  </form>
+  <ul class="hashtags-list">
+    <% if(hashtags && hashtags.length) { %>
+      <% hashtags.forEach(function(hashtag){ %>
+        <li>
+          <span class="hashtag-title">#<%= hashtag %></span>
+          <form action="/remove-hashtag" method="POST" style="display:inline;">
+            <input type="hidden" name="hashtag" value="<%= hashtag %>">
+            <button class="remove-btn" title="حذف">🗑</button>
+          </form>
+        </li>
+      <% }) %>
+    <% } else { %>
+      <li style="opacity:.7;text-align:center;">هنوز هیچ هشتگی ثبت نشده</li>
+    <% } %>
+  </ul>
+</div>
