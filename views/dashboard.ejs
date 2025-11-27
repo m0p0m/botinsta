@@ -1,70 +1,147 @@
-<div class="dashboard">
-  <% if (accounts.length > 0) { %>
-    <div class="account-switcher">
-      <form action="/switch-account" method="POST">
-        <select name="username" onchange="this.form.submit()">
-          <% accounts.forEach(account => { %>
-            <option value="<%= account.username %>" <%= account.username === selectedAccount.username ? 'selected' : '' %>><%= account.username %></option>
-          <% }) %>
-        </select>
-      </form>
-    </div>
-
-    <div class="profile-info">
-      <img src="<%= profile.profile_pic_url %>" alt="Profile Picture">
-      <div>
-        <h2><%= profile.full_name %></h2>
-        <p><%= profile.biography %></p>
-      </div>
-    </div>
-
-    <div class="profile-stats">
-      <div class="stat">
-        <h3><%= profile.followers %></h3>
-        <p>Followers</p>
-      </div>
-      <div class="stat">
-        <h3><%= profile.following %></h3>
-        <p>Following</p>
-      </div>
-      <div class="stat">
-        <h3><%= profile.posts %></h3>
-        <p>Posts</p>
-      </div>
-    </div>
-
-    <div class="hashtag-form">
-      <form action="/start" method="POST">
-        <input type="hidden" name="username" value="<%= selectedAccount.username %>">
-        <input type="text" name="hashtag" placeholder="Enter hashtag">
-        <button type="submit">Start Liking</button>
-      </form>
-    </div>
-
-    <div class="status-panel">
-      <p>Status: <span id="status">Idle</span></p>
-      <p id="message"></p>
-    </div>
-  <% } else { %>
-    <p>No accounts added. Please add an account.</p>
-  <% } %>
-
-  <div class="add-account-form">
-    <h2>Add Account</h2>
-    <form action="/add-account" method="POST">
-      <input type="text" name="username" placeholder="Username" required>
-      <input type="password" name="password" placeholder="Password" required>
-      <button type="submit">Add Account</button>
-    </form>
+<div class="dashboard-main">
+  <!-- تب‌ها -->
+  <div class="tab-nav">
+    <button class="tab-link active" data-tab="account">اکانت</button>
+    <button class="tab-link" data-tab="hashtags">هشتگ‌ها</button>
+    <button class="tab-link" data-tab="bot">کنترل ربات</button>
   </div>
+
+  <div class="tab-content">
+    <!-- تب اکانت -->
+    <div id="account" class="tab-pane active">
+      <div class="account-section-list">
+        <h3>مدیریت اکانت‌ها</h3>
+        <ul class="accounts-list">
+          <% if (accounts && accounts.length) { %>
+            <% accounts.forEach(function(account, idx){ %>
+              <li>
+                <!-- نقطه وضعیت تستی سبز/قرمز (random با idx) -->
+                <span class="account-dot <%= (idx % 2 === 0 ? 'active' : 'banned') %>"></span>
+                <span class="account-user"><%= account.username %></span>
+                <form action="/switch-account" method="POST" style="display: inline">
+                  <input type="hidden" name="username" value="<%= account.username %>">
+                  <button type="submit" class="account-switch <%= selectedAccount && selectedAccount.username === account.username ? 'selected' : '' %>" title="انتخاب">انتخاب</button>
+                </form>
+                <form action="/remove-account" method="POST" style="display: inline">
+                  <input type="hidden" name="username" value="<%= account.username %>">
+                  <button class="remove-btn" title="حذف">🗑</button>
+                </form>
+              </li>
+            <% }) %>
+          <% } else { %>
+            <li style="text-align:center; opacity:.7;">هنوز اکانتی ثبت نشده</li>
+          <% } %>
+        </ul>
+        <button id="add-account-btn">+ افزودن اکانت جدید</button>
+      </div>
+      <!-- مودال افزودن اکانت -->
+      <div id="add-account-modal" class="modal">
+        <div class="modal-content">
+          <span class="close-btn">&times;</span>
+          <h2>افزودن اکانت جدید</h2>
+          <% if (typeof error !== 'undefined' && error) { %>
+            <p class="form-error"><%= error %></p>
+          <% } %>
+          <form action="/add-account" method="POST">
+            <input type="text" name="username" placeholder="نام کاربری" required>
+            <input type="password" name="password" placeholder="رمز عبور" required>
+            <button type="submit">افزودن اکانت</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <!-- تب هشتگ -->
+    <div id="hashtags" class="tab-pane">
+      <div class="hashtag-management">
+        <h3>مدیریت هشتگ‌ها</h3>
+        <form action="/add-hashtag" method="POST" class="hashtag-add-form">
+          <input type="text" name="hashtag" placeholder="هشتگ جدید..." required>
+          <button type="submit">افزودن</button>
+        </form>
+        <ul class="hashtags-list">
+          <% if(hashtags && hashtags.length) { %>
+            <% hashtags.forEach(function(hashtag){ %>
+            <li>
+              <span class="hashtag-title">#<%= hashtag %></span>
+              <form action="/remove-hashtag" method="POST" style="display:inline;">
+                <input type="hidden" name="hashtag" value="<%= hashtag %>">
+                <button class="remove-btn" title="حذف">🗑</button>
+              </form>
+            </li>
+            <% }) %>
+          <% } else { %>
+            <li style="opacity:.7;text-align:center;">هنوز هیچ هشتگی ثبت نشده</li>
+          <% } %>
+        </ul>
+      </div>
+    </div>
+    <!-- تب کنترل ربات -->
+    <div id="bot" class="tab-pane">
+      <div class="bot-controls">
+        <h3>کنترل ربات</h3>
+        <form id="start-form" action="/start" method="POST">
+          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
+          <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
+            <option value="hashtag">هشتگ</option>
+            <option value="explore">اکسپلور</option>
+          </select>
+          <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
+            <% hashtags.forEach(function(hashtag) { %>
+              <option value="<%= hashtag %>"><%= hashtag %></option>
+            <% }) %>
+          </select>
+          <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
+          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
+        </form>
+        <form id="stop-form" action="/stop" method="POST">
+          <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount.username : '' %>">
+          <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
+        </form>
+        <div class="status-panel">
+          <h3>وضعیت ربات</h3>
+          <p><strong>وضعیت:</strong> <span id="status">غیرفعال</span></p>
+        </div>
+        <div class="activity-log">
+          <h3>گزارش فعالیت</h3>
+          <ul id="log-list"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
-  const socket = new WebSocket('ws://' + window.location.host);
-
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    document.getElementById('status').textContent = data.status;
-    document.getElementById('message').textContent = data.message;
-  };
+// فعال/غیرفعال کردن تب‌ها و نمایش هر بخش
+const tabLinks = document.querySelectorAll('.tab-link');
+const tabPanes = document.querySelectorAll('.tab-pane');
+tabLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    const tab = link.dataset.tab;
+    tabLinks.forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    tabPanes.forEach(pane => {
+      if (pane.id === tab) {
+        pane.classList.add('active');
+      } else {
+        pane.classList.remove('active');
+      }
+    });
+  });
+});
+// مودال افزودن اکانت
+const addAccountBtn = document.getElementById('add-account-btn');
+const modal = document.getElementById('add-account-modal');
+const closeBtn = modal && modal.querySelector('.close-btn');
+if (addAccountBtn) {
+  addAccountBtn.addEventListener('click', () => { modal.classList.add('show-modal'); });
+}
+if (closeBtn && modal) {
+  closeBtn.addEventListener('click', () => { modal.classList.remove('show-modal'); });
+  window.addEventListener('click', (event) => {
+    if (event.target == modal) {
+      modal.classList.remove('show-modal');
+    }
+  });
+}
 </script>

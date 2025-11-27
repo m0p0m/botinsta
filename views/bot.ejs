@@ -1,0 +1,32 @@
+<div class="bot-controls">
+  <h2>کنترل ربات اینستاگرام</h2>
+  <form id="start-form" action="/start" method="POST">
+    <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount : '' %>">
+    <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
+      <option value="hashtag">هشتگ</option>
+      <option value="explore">اکسپلور</option>
+    </select>
+    <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
+      <% hashtags.forEach(function(hashtag) { %>
+        <option value="<%= hashtag %>"><%= hashtag %></option>
+      <% }) %>
+    </select>
+    <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
+    <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
+  </form>
+  <form id="stop-form" action="/stop" method="POST">
+    <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount : '' %>">
+    <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
+  </form>
+  <div class="status-panel">
+    <h3>وضعیت ربات</h3>
+    <p><strong>وضعیت:</strong> <span id="status">غیرفعال</span></p>
+  </div>
+  <div class="activity-log">
+    <h3>گزارش فعالیت</h3>
+    <ul id="log-list"></ul>
+  </div>
+</div>
+<script>
+// نمونه به‌روزرسانی وضعیت و log در آینده: WebSocket یا Polling
+</script>

@@ -3,33 +3,56 @@ const router = express.Router();
 const { instagramService } = require('../services/instagram.service');
 const { botService } = require('../services/bot.service');
 const { hashtagService } = require('../services/hashtag.service');
+<<<<<<< HEAD
 const ErrorHandler = require('../services/error-handler.service');
+=======
+>>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
 
-router.get('/', async (req, res) => {
+/**
+ * Renders the main dashboard page.
+ * Fetches all necessary data like accounts, profile, and hashtags.
+ * @route GET /
+ */
+router.get('/', (req, res) => { res.redirect('/accounts'); });
+
+router.get('/accounts', async (req, res) => {
   const accounts = await instagramService.getAccounts();
-  if (accounts.length === 0) {
-    res.render('login');
-  } else {
-    const selectedAccount = accounts.find(acc => acc.username === req.session.selectedUsername) || accounts[0];
-    const profile = await instagramService.getProfileData(selectedAccount.username);
-    res.render('dashboard', { accounts, selectedAccount, profile });
-  }
+  res.render('accounts', {
+    accounts,
+    selectedAccount: req.session.selectedUsername || null,
+    error: req.query.error
+  });
+});
+router.get('/hashtags', async (req, res) => {
+  const hashtags = await hashtagService.getHashtags();
+  res.render('hashtags', { hashtags, error: req.query.error });
+});
+router.get('/bot', async (req, res) => {
+  const hashtags = await hashtagService.getHashtags();
+  const accounts = await instagramService.getAccounts();
+  res.render('bot', {
+    selectedAccount: req.session.selectedUsername || null,
+    hashtags,
+    accounts,
+    error: req.query.error
+  });
 });
 
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    await instagramService.login(username, password);
-    req.session.selectedUsername = username;
-    res.redirect('/');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
+/**
+ * Renders the login page.
+ * @route GET /login
+ */
+router.get('/login', (req, res) => {
+  res.render('login', { error: null });
 });
 
 /**
  * Handles the addition of a new Instagram account.
+<<<<<<< HEAD
  * Logs the user in and saves the session with comprehensive error handling.
+=======
+ * Logs the user in and saves the session.
+>>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
  * @route POST /add-account
  */
 router.post('/add-account', async (req, res) => {
@@ -64,26 +87,85 @@ router.post('/add-account', async (req, res) => {
     return res.redirect('/?success=حساب با موفقیت اضافه شد');
 
   } catch (error) {
+<<<<<<< HEAD
     res.status(400).send(error.message);
     ErrorHandler.logError('ورود حساب Instagram', error);
     
     const userFriendlyError = ErrorHandler.formatErrorForDisplay(error);
     return res.render('login', { error: userFriendlyError });
+=======
+    res.render('login', { error: error.message });
+>>>>>>> e21c7d3b58513bd702873f009d433ccf3ba328f0
   }
 });
 
+/**
+ * Switches the currently active Instagram account.
+ * @route POST /switch-account
+ */
 router.post('/switch-account', (req, res) => {
   req.session.selectedUsername = req.body.username;
   res.redirect('/');
 });
 
+/**
+ * Adds a new hashtag to the list.
+ * @route POST /add-hashtag
+ */
+router.post('/add-hashtag', async (req, res) => {
+  const { hashtag } = req.body;
+  try {
+    await hashtagService.addHashtag(hashtag);
+    res.redirect('/');
+  } catch (error) {
+    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+});
+
+/**
+ * Removes a hashtag from the list.
+ * @route POST /remove-hashtag
+ */
+router.post('/remove-hashtag', async (req, res) => {
+  const { hashtag } = req.body;
+  try {
+    await hashtagService.removeHashtag(hashtag);
+    res.redirect('/');
+  } catch (error) {
+    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+  }
+});
+
+/**
+ * Starts the Instagram bot.
+ * @route POST /start
+ */
 router.post('/start', (req, res) => {
-  const { username, hashtag } = req.body;
-  instagramService.likeCommentsByHashtag(username, hashtag, (status, message) => {
+  const { username, type, target, startTime } = req.body;
+  if (!username) {
+    return res.redirect('/?error=No account selected.');
+  }
+
+  botService.start(username, type, target, (status, message) => {
     req.wss.clients.forEach(client => {
-      client.send(JSON.stringify({ status, message }));
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(JSON.stringify({ status, message }));
+      }
     });
-  });
+  }, {}, startTime);
+
+  res.redirect('/');
+});
+
+/**
+ * Stops the Instagram bot.
+ * @route POST /stop
+ */
+router.post('/stop', (req, res) => {
+  const { username } = req.body;
+  if (username) {
+    botService.stop(username);
+  }
   res.redirect('/');
 });
 

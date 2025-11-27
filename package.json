@@ -25,6 +25,7 @@
     "body-parser": "^2.2.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "express-ejs-layouts": "^2.5.1",
     "express-session": "^1.18.2",
     "instagram-private-api": "^1.46.1",
     "jest": "^30.2.0",

@@ -269,6 +269,11 @@ class InstagramService {
     }
   }
 
+  async getExploreFeed(username) {
+    const ig = await this.getApiClient(username);
+    return ig.feed.discover();
+  }
+
   async getPostComments(username, mediaId) {
     try {
       if (!mediaId) {
@@ -303,30 +308,6 @@ class InstagramService {
       console.error('❌ خطا در لایک کردن کامنت:', error.message);
       throw error;
     }
-  }
-
-  async likeCommentsByHashtag(username, hashtag, onUpdate) {
-    const feed = await this.getHashtagFeed(username, hashtag);
-    const items = await feed.items();
-
-    for (const item of items) {
-      const commentsFeed = await this.getPostComments(username, item.pk);
-      const comments = await commentsFeed.items();
-
-      for (const comment of comments) {
-        try {
-          onUpdate('liking', `Liking comment by ${comment.user.username} on post ${item.pk}`);
-          await this.likeComment(username, comment.pk);
-          onUpdate('liked', `Liked comment by ${comment.user.username}`);
-
-          const delay = Math.floor(Math.random() * 5000) + 1000; // Random delay between 1-6 seconds
-          await new Promise(resolve => setTimeout(resolve, delay));
-        } catch (error) {
-          onUpdate('error', `Failed to like comment: ${error.message}`);
-        }
-      }
-    }
-    onUpdate('idle', 'Finished liking comments.');
   }
 }
 
