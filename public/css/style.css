@@ -171,8 +171,8 @@ button:disabled {
   align-items: center;
 }
 
-.modal.active {
-  display: flex; /* Show with flex for centering */
+.show-modal {
+  display: flex !important; /* Show with flex for centering */
 }
 
 .modal-content {
