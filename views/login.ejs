@@ -1,8 +1,11 @@
 <div class="login-form">
-  <h1>Instagram Bot</h1>
+  <h1>ورود به ربات اینستاگرام</h1>
   <form action="/login" method="POST">
-    <input type="text" name="username" placeholder="Username" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <button type="submit">Log In</button>
+    <input type="text" name="username" placeholder="نام کاربری" autocomplete="username" required>
+    <input type="password" name="password" placeholder="رمز عبور" autocomplete="current-password" required>
+    <button type="submit">ورود</button>
   </form>
+  <% if(typeof error !== 'undefined' && error) { %>
+    <p class="form-error"><%= error %></p>
+  <% } %>
 </div>

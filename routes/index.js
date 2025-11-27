@@ -16,27 +16,49 @@ router.get('/', async (req, res) => {
     let selectedAccount = null;
     let profile = null;
 
-    if (accounts.length > 0) {
+    if (accounts && accounts.length > 0) {
       selectedAccount = accounts.find(acc => acc.username === req.session.selectedUsername) || accounts[0];
-      profile = await instagramService.getProfileData(selectedAccount.username);
+      
+      try {
+        profile = await instagramService.getProfileData(selectedAccount.username);
+      } catch (profileError) {
+        console.warn('Profile fetch error:', profileError.message);
+        profile = {
+          followers: 0,
+          following: 0,
+          posts: 0,
+          profile_pic_url: '',
+          full_name: selectedAccount.username,
+          biography: 'Profile not loaded'
+        };
+      }
     }
 
     res.render('dashboard', {
-      accounts,
+      accounts: accounts || [],
       selectedAccount,
       profile,
-      hashtags,
+      hashtags: hashtags || [],
       error: req.query.error
     });
   } catch (error) {
+    console.error('Dashboard route error:', error);
     res.render('dashboard', {
       accounts: [],
       selectedAccount: null,
       profile: null,
       hashtags: [],
-      error: error.message
+      error: 'An error occurred. Please try again.'
     });
   }
+});
+
+/**
+ * Renders the login page.
+ * @route GET /login
+ */
+router.get('/login', (req, res) => {
+  res.render('login', { error: null });
 });
 
 /**
@@ -51,7 +73,7 @@ router.post('/add-account', async (req, res) => {
     req.session.selectedUsername = username;
     res.redirect('/');
   } catch (error) {
-    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+    res.render('login', { error: error.message });
   }
 });
 
