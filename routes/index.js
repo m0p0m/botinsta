@@ -9,48 +9,29 @@ const { hashtagService } = require('../services/hashtag.service');
  * Fetches all necessary data like accounts, profile, and hashtags.
  * @route GET /
  */
-router.get('/', async (req, res) => {
-  try {
-    const accounts = await instagramService.getAccounts();
-    const hashtags = await hashtagService.getHashtags();
-    let selectedAccount = null;
-    let profile = null;
+router.get('/', (req, res) => { res.redirect('/accounts'); });
 
-    if (accounts && accounts.length > 0) {
-      selectedAccount = accounts.find(acc => acc.username === req.session.selectedUsername) || accounts[0];
-      
-      try {
-        profile = await instagramService.getProfileData(selectedAccount.username);
-      } catch (profileError) {
-        console.warn('Profile fetch error:', profileError.message);
-        profile = {
-          followers: 0,
-          following: 0,
-          posts: 0,
-          profile_pic_url: '',
-          full_name: selectedAccount.username,
-          biography: 'Profile not loaded'
-        };
-      }
-    }
-
-    res.render('dashboard', {
-      accounts: accounts || [],
-      selectedAccount,
-      profile,
-      hashtags: hashtags || [],
-      error: req.query.error
-    });
-  } catch (error) {
-    console.error('Dashboard route error:', error);
-    res.render('dashboard', {
-      accounts: [],
-      selectedAccount: null,
-      profile: null,
-      hashtags: [],
-      error: 'An error occurred. Please try again.'
-    });
-  }
+router.get('/accounts', async (req, res) => {
+  const accounts = await instagramService.getAccounts();
+  res.render('accounts', {
+    accounts,
+    selectedAccount: req.session.selectedUsername || null,
+    error: req.query.error
+  });
+});
+router.get('/hashtags', async (req, res) => {
+  const hashtags = await hashtagService.getHashtags();
+  res.render('hashtags', { hashtags, error: req.query.error });
+});
+router.get('/bot', async (req, res) => {
+  const hashtags = await hashtagService.getHashtags();
+  const accounts = await instagramService.getAccounts();
+  res.render('bot', {
+    selectedAccount: req.session.selectedUsername || null,
+    hashtags,
+    accounts,
+    error: req.query.error
+  });
 });
 
 /**
