@@ -48,20 +48,20 @@ class InstagramService {
         throw new Error(`رمز عبور باید حداقل ${Config.VALIDATION.PASSWORD_MIN_LENGTH} کاراکتر باشد`);
       }
 
-      console.log(`🔐 در حال ورود به حساب: ${username}...`);
+      console.log(`🔐 Logging in to account: ${username}...`);
 
-      // کانفیگ Device
+      // Configure device
       this._configureDevice(username);
 
-      // Pre-login Flow - شبیه‌سازی دستگاه واقعی
-      console.log('📱 در حال اجرای Pre-Login Flow...');
+      // Pre-login Flow - simulate real device
+      console.log('📱 Running Pre-Login Flow...');
       await this.ig.simulate.preLoginFlow();
 
       // تأخیر کوچک برای شبیه‌سازی رفتار انسانی
       await this._delay(Config.INSTAGRAM.PRE_LOGIN_DELAY + Math.random() * 400);
 
       // Login
-      console.log('🔓 در حال ارسال اطلاعات ورود...');
+      console.log('🔑 Sending login credentials...');
       let loggedInUser;
       
       try {
@@ -74,7 +74,7 @@ class InstagramService {
              loginError.response?.body?.two_factor_required === true ||
              loginError.message?.includes('challenge_required'))) {
           
-          console.warn('⚠️ تأیید دو مرحله‌ای مورد نیاز است');
+          console.warn('⚠️ Two-factor authentication required');
           throw new Error('حساب شما نیاز به تأیید دو مرحله‌ای دارد. لطفا اپ Instagram را بررسی کنید.');
         }
 
@@ -105,10 +105,10 @@ class InstagramService {
         throw new Error(`خطای ورود: ${loginError.message || 'خطای نامشخص'}`);
       }
 
-      console.log(`✅ ورود موفق: ${loggedInUser.username} (ID: ${loggedInUser.pk})`);
+      console.log(`✅ Login successful: ${loggedInUser.username} (ID: ${loggedInUser.pk})`);
 
       // Post-Login Flow
-      console.log('📲 در حال اجرای Post-Login Flow...');
+      console.log('📲 Running Post-Login Flow...');
       await this.ig.simulate.postLoginFlow();
 
       // تأخیر بعد از لاگین
@@ -128,7 +128,7 @@ class InstagramService {
 
       if (existingAccount) {
         Object.assign(existingAccount, sessionData);
-        console.log(`🔄 Session برای ${username} به‌روزرسانی شد`);
+        console.log(`🔄 Session updated for ${username}`);
       } else {
         accounts.push(sessionData);
         console.log(`➕ حساب جدید ${username} ذخیره شد`);
@@ -155,7 +155,7 @@ class InstagramService {
       return Array.isArray(accounts) ? accounts : [];
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('📁 فایل accounts.json ایجاد می‌شود...');
+        console.log('📁 Creating accounts.json file...');
         return [];
       }
       console.error('❌ خطا در خواندن accounts.json:', error.message);
@@ -184,7 +184,7 @@ class InstagramService {
       this._configureDevice(account.username);
       await ig.state.deserialize(account.session);
       
-      console.log(`✅ API Client برای ${username} آماده شد`);
+      console.log(`✅ API Client ready for ${username}`);
       return ig;
     } catch (error) {
       console.error('❌ خطا در دریافت API Client:', error.message);
@@ -198,7 +198,7 @@ class InstagramService {
         throw new Error('نام کاربری الزامی است');
       }
 
-      console.log(`📊 در حال دریافت اطلاعات پروفایل ${username}...`);
+      console.log(`📊 Fetching profile data for ${username}...`);
       const ig = await this.getApiClient(username);
       
       const userId = await ig.user.getIdByUsername(username);
@@ -216,7 +216,7 @@ class InstagramService {
         is_private: userInfo.is_private || false,
       };
 
-      console.log(`✅ اطلاعات پروفایل دریافت شد`);
+      console.log(`✅ Profile data fetched`);
       return profileData;
     } catch (error) {
       console.error('❌ خطا در دریافت اطلاعات پروفایل:', error.message);
@@ -230,11 +230,11 @@ class InstagramService {
         throw new Error('هشتگ الزامی است');
       }
 
-      console.log(`🏷️ در حال دریافت فید هشتگ #${hashtag}...`);
+      console.log(`🏷️ Fetching hashtag feed #${hashtag}...`);
       const ig = await this.getApiClient(username);
       const feed = ig.feed.tag(hashtag);
       
-      console.log(`✅ فید هشتگ آماده شد`);
+      console.log(`✅ Hashtag feed ready`);
       return feed;
     } catch (error) {
       console.error('❌ خطا در دریافت فید هشتگ:', error.message);
@@ -244,11 +244,11 @@ class InstagramService {
 
   async getExploreFeed(username) {
     try {
-      console.log(`🔍 در حال دریافت فید کاوش...`);
+      console.log(`🔍 Fetching explore feed...`);
       const ig = await this.getApiClient(username);
       const feed = ig.feed.discover();
       
-      console.log(`✅ فید کاوش آماده شد`);
+      console.log(`✅ Explore feed ready`);
       return feed;
     } catch (error) {
       console.error('❌ خطا در دریافت فید کاوش:', error.message);
@@ -267,11 +267,11 @@ class InstagramService {
         throw new Error('mediaId الزامی است');
       }
 
-      console.log(`💬 در حال دریافت کامنت‌های پست...`);
+      console.log(`💬 Fetching post comments...`);
       const ig = await this.getApiClient(username);
       const feed = await ig.media.commentsFeed(mediaId);
       
-      console.log(`✅ کامنت‌های پست دریافت شد`);
+      console.log(`✅ Post comments fetched`);
       return feed;
     } catch (error) {
       console.error('❌ خطا در دریافت کامنت‌های پست:', error.message);
@@ -285,11 +285,11 @@ class InstagramService {
         throw new Error('commentId الزامی است');
       }
 
-      console.log(`❤️ در حال لایک کردن کامنت...`);
+      console.log(`❤️ Liking comment...`);
       const ig = await this.getApiClient(username);
       const result = await ig.media.likeComment(commentId);
       
-      console.log(`✅ کامنت لایک شد`);
+      console.log(`✅ Comment liked`);
       return result;
     } catch (error) {
       console.error('❌ خطا در لایک کردن کامنت:', error.message);

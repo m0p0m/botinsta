@@ -22,8 +22,19 @@ app.set('views', path.join(__dirname, '../views'));
 app.use(expressLayouts);
 app.set('layout', 'layout');
 
-// Middleware - Static Files
-app.use(express.static(path.join(__dirname, '../public')));
+// Asset version used to bust cache after server restarts (development)
+app.locals.assetVersion = Date.now();
+
+// Middleware - Static Files with No-Cache headers for CSS
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: 0, // No cache for static files during development
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css') || path.endsWith('.js')) {
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      res.set('Pragma', 'no-cache');
+    }
+  }
+}));
 
 // Middleware - Logger
 app.use(Logger.middleware());
@@ -68,21 +79,21 @@ app.get('/debug-css', (req, res) => {
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log('\n' + '='.repeat(60));
-  console.log('🤖 ربات اینستاگرام');
+  console.log('🤖 Instagram Bot');
   console.log('='.repeat(60));
-  console.log(`✓ سرور در حال اجرا است: http://localhost:${port}`);
-  console.log('📱 آپ Instagram را باز کنید و آماده‌ی تأیید دو مرحله‌ای باشید');
+  console.log(`✓ Server running at: http://localhost:${port}`);
+  console.log('📱 Open Instagram app and be ready for 2FA verification');
   console.log('='.repeat(60) + '\n');
 
-  // بارگیری state و شروع ربات‌های background
+  // Load persisted state and resume background bots
   botManager.loadState();
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n\n🛑 سرور در حال خاموشی...');
+  console.log('\n\n🛑 Server shutting down...');
   server.close(() => {
-    console.log('✅ سرور بسته شد');
+    console.log('✅ Server closed');
     process.exit(0);
   });
 });

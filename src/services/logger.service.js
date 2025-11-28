@@ -75,7 +75,7 @@ class Logger {
         const content = await fs.readFile(logFile, 'utf8');
         errors = JSON.parse(content);
       } catch (e) {
-        // فایل اولین بار ایجاد می‌شود
+        // File created on first error
       }
 
       errors.push(errorData);
@@ -92,7 +92,7 @@ class Logger {
   }
 
   /**
-   * ثبت ورود موفق
+   * Log successful login
    */
   async logSuccessfulLogin(username) {
     try {
@@ -103,7 +103,7 @@ class Logger {
         const content = await fs.readFile(logFile, 'utf8');
         logins = JSON.parse(content);
       } catch (e) {
-        // فایل اولین بار ایجاد می‌شود
+        // File created on first login
       }
 
       logins.push({

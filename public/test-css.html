@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CSS Test</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="dashboard-main">
+      <h1>CSS Test Page</h1>
+      <div class="alert alert-error">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">If you see this styled, CSS is working!</div>
+      </div>
+      <button>Test Button</button>
+    </div>
+  </div>
+  <script>
+    // Check if CSS is loaded
+    const element = document.querySelector('.app-container');
+    const styles = window.getComputedStyle(element);
+    console.log('Background color:', styles.backgroundColor);
+    console.log('Max-width:', styles.maxWidth);
+    console.log('CSS appears to be loaded successfully!');
+  </script>
+</body>
+</html>
