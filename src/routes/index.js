@@ -6,6 +6,32 @@ const { botService } = require('../services/bot.service');
 const { hashtagService } = require('../services/hashtag.service');
 const ErrorHandler = require('../services/error-handler.service');
 
+// App-level authentication: protect routes behind a simple session-based login
+const APP_USER = process.env.BASIC_AUTH_USER || 'admin';
+const APP_PASS = process.env.BASIC_AUTH_PASSWORD || '';
+
+// Public paths that do not require app auth
+const PUBLIC_PATHS = [
+  '/app-login',
+  '/app-logout',
+  '/favicon.ico',
+  '/css',
+  '/js',
+  '/static',
+  '/login',
+  '/sw.js',
+  '/debug-css'
+];
+
+router.use((req, res, next) => {
+  // allow public assets and login page
+  const p = req.path;
+  const isPublic = PUBLIC_PATHS.some(pp => p === pp || p.startsWith(pp));
+  if (isPublic) return next();
+  if (req.session && req.session.isAuthenticated) return next();
+  return res.redirect('/app-login');
+});
+
 /**
  * Renders the main dashboard page.
  * Fetches all necessary data like accounts, profile, and hashtags.
@@ -51,6 +77,31 @@ router.get('/bot', async (req, res) => {
  */
 router.get('/login', (req, res) => {
   res.render('login', { error: null });
+});
+
+// App-level login page
+router.get('/app-login', (req, res) => {
+  res.render('app-login', { error: null, username: APP_USER });
+});
+
+router.post('/app-login', (req, res) => {
+  const { username, password } = req.body;
+  const user = username && username.trim() ? username.trim() : APP_USER;
+  if (!password) {
+    return res.render('app-login', { error: 'Password is required', username: user });
+  }
+
+  if (user === APP_USER && password === APP_PASS) {
+    req.session.isAuthenticated = true;
+    return res.redirect('/');
+  }
+
+  return res.render('app-login', { error: 'Invalid credentials', username: user });
+});
+
+router.post('/app-logout', (req, res) => {
+  req.session.isAuthenticated = false;
+  res.redirect('/app-login');
 });
 
 /**

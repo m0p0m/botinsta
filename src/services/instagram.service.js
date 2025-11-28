@@ -107,11 +107,24 @@ class InstagramService {
 
       console.log(`✅ Login successful: ${loggedInUser.username} (ID: ${loggedInUser.pk})`);
 
-      // Post-Login Flow
+      // Post-Login Flow (some Instagram endpoints may return HTML 404; treat certain ones as non-fatal)
       console.log('📲 Running Post-Login Flow...');
-      await this.ig.simulate.postLoginFlow();
+      try {
+        await this.ig.simulate.postLoginFlow();
+      } catch (postErr) {
+        const status = postErr?.response?.status;
+        const body = postErr?.response?.body || '';
+        const msg = postErr?.message || '';
 
-      // تأخیر بعد از لاگین
+        // If IG returned an HTML 404 (web fallback) for fbsearch suggested_searches, ignore and continue
+        if (status === 404 && typeof body === 'string' && body.includes('<!DOCTYPE html>') || msg.includes('/api/v1/fbsearch/suggested_searches')) {
+          console.warn('⚠️ Non-fatal post-login request failed (fbsearch 404). Continuing.');
+        } else {
+          throw postErr;
+        }
+      }
+
+      // Delay after login
       await this._delay(Config.INSTAGRAM.POST_LOGIN_DELAY);
 
       // ذخیره Session
@@ -256,10 +269,7 @@ class InstagramService {
     }
   }
 
-  async getExploreFeed(username) {
-    const ig = await this.getApiClient(username);
-    return ig.feed.discover();
-  }
+  
 
   async getPostComments(username, mediaId) {
     try {
