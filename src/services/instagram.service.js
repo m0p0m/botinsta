@@ -243,27 +243,36 @@ class InstagramService {
         throw new Error('هشتگ الزامی است');
       }
 
+      // Clean hashtag - remove # if present and trim whitespace
+      const cleanHashtag = hashtag.replace(/^#/, '').trim();
+      
+      if (!cleanHashtag) {
+        throw new Error('هشتگ معتبر نیست');
+      }
+
       const sortText = sortType === 'top' ? 'برترین' : 'جدیدترین';
-      console.log(`🏷️ Fetching ${sortText} hashtag feed #${hashtag}...`);
+      console.log(`🏷️ Fetching ${sortText} hashtag feed #${cleanHashtag}...`);
       const ig = await this.getApiClient(username);
       
-      // For top posts, we need to get the hashtag info first to get rank token
-      let feed;
-      if (sortType === 'top') {
-        try {
-          // Get hashtag info to access top posts
-          const hashtagInfo = await ig.hashtag.info(hashtag);
-          feed = ig.feed.tag(hashtag);
-          // Try to request top posts
-          // Note: Instagram API may not always provide top posts, it depends on the hashtag
-          console.log(`📊 Hashtag info: ${hashtagInfo.media_count} posts`);
-        } catch (e) {
-          console.warn('⚠️ Could not get hashtag info for top posts, using default feed');
-          feed = ig.feed.tag(hashtag);
+      // First, verify the hashtag exists by getting its info
+      let hashtagInfo;
+      try {
+        hashtagInfo = await ig.hashtag.info(cleanHashtag);
+        console.log(`📊 Hashtag info: ${hashtagInfo.media_count || 0} posts, name: ${hashtagInfo.name || cleanHashtag}`);
+        
+        if (hashtagInfo.media_count === 0) {
+          console.warn(`⚠️ هشتگ #${cleanHashtag} هیچ پستی ندارد`);
         }
-      } else {
-        feed = ig.feed.tag(hashtag);
+      } catch (infoError) {
+        // If we can't get info, the hashtag might not exist
+        console.error(`❌ Could not get hashtag info for #${cleanHashtag}:`, infoError.message);
+        throw new Error(`هشتگ #${cleanHashtag} پیدا نشد یا دسترسی به آن ممکن نیست`);
       }
+      
+      // Get the tag feed
+      // Note: instagram-private-api's feed.tag() returns recent posts by default
+      // For top posts, we might need to use a different approach, but let's try the regular feed first
+      const feed = ig.feed.tag(cleanHashtag);
       
       console.log(`✅ Hashtag feed ready (${sortText})`);
       return feed;

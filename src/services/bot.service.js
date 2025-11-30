@@ -121,21 +121,67 @@ class BotService {
     // fetch first page of items then iterate; some feeds return isMoreAvailable() === false initially
     let items;
     try {
+      // Request items from the feed
+      // The feed.items() method will automatically handle pagination and encoding
       items = await feed.items();
+      
+      // Log the response for debugging
+      if (items && items.length > 0) {
+        console.log(`[${job.username}] Successfully fetched ${items.length} items from hashtag #${job.target}`);
+        console.log(`[${job.username}] First item type: ${items[0].media_type || 'unknown'}, ID: ${items[0].pk || 'unknown'}`);
+      }
     } catch (e) {
-      console.error(`[${job.username}] Error fetching items from hashtag feed #${job.target}:`, e.message || e);
-      job.onUpdate('error', `خطا در گرفتن پست‌ها برای هشتگ #${job.target}: ${e.message || e}`);
+      console.error(`[${job.username}] Error fetching items from hashtag feed #${job.target}:`, e);
+      console.error(`[${job.username}] Error details:`, {
+        message: e.message,
+        response: e.response?.body || e.response,
+        status: e.response?.status
+      });
+      
+      // Check if it's a 404 error - might be invalid hashtag or API issue
+      if (e.message && (e.message.includes('404') || e.message.includes('Not Found'))) {
+        job.onUpdate('error', `❌ هشتگ #${job.target} پیدا نشد یا دسترسی به آن ممکن نیست. لطفا هشتگ دیگری امتحان کنید.`);
+        // Wait longer before retrying for invalid hashtag
+        job.polling_delay = 30 * 1000; // 30 seconds
+      } else if (e.message && e.message.includes('429')) {
+        job.onUpdate('error', `⏸️ محدودیت نرخ! لطفا چند دقیقه صبر کنید و دوباره تلاش کنید.`);
+        job.polling_delay = 5 * 60 * 1000; // 5 minutes
+      } else if (e.message && e.message.includes('401') || e.message.includes('Unauthorized')) {
+        job.onUpdate('error', `🔐 خطا در احراز هویت. لطفا دوباره وارد شوید.`);
+        job.status = 'error';
+      } else {
+        job.onUpdate('error', `❌ خطا در گرفتن پست‌ها برای هشتگ #${job.target}: ${e.message || 'خطای نامشخص'}`);
+      }
       return;
     }
     console.log(`[${job.username}] fetched ${items?.length || 0} items from hashtag #${job.target} (${job.sortType})`);
-    if (!items || items.length === 0) {
-      job.onUpdate('idle', `هیچ پستی برای هشتگ #${job.target} یافت نشد.`);
+    
+    // Validate items
+    if (!items) {
+      job.onUpdate('error', `❌ پاسخ نامعتبر از سرور اینستاگرام برای هشتگ #${job.target}`);
       return;
     }
     
-    job.onUpdate('running', `✅ ${items.length} پست ${sortTypeText} پیدا شد. شروع به پردازش...`);
+    if (items.length === 0) {
+      job.onUpdate('idle', `⚠️ هیچ پستی برای هشتگ #${job.target} یافت نشد. ممکن است هشتگ وجود نداشته باشد یا پست‌های آن حذف شده باشند.`);
+      return;
+    }
+    
+    // Filter out invalid items
+    const validItems = items.filter(item => item && item.pk);
+    if (validItems.length === 0) {
+      job.onUpdate('error', `❌ هیچ پست معتبری در پاسخ اینستاگرام یافت نشد`);
+      return;
+    }
+    
+    if (validItems.length < items.length) {
+      console.warn(`[${job.username}] Filtered out ${items.length - validItems.length} invalid items`);
+    }
+    
+    job.onUpdate('running', `✅ ${validItems.length} پست ${sortTypeText} پیدا شد. شروع به پردازش...`);
 
-    for (const item of items) {
+    // Process valid items
+    for (const item of validItems) {
       if (job.stop || job.status !== 'running') break;
       await this.processPost(job, item);
     }
@@ -149,7 +195,12 @@ class BotService {
       }
       console.log(`[${job.username}] fetched ${items?.length || 0} items from next page of #${job.target}`);
       if (!items || items.length === 0) break;
-      for (const item of items) {
+      
+      // Filter valid items
+      const validItems = items.filter(item => item && item.pk);
+      if (validItems.length === 0) break;
+      
+      for (const item of validItems) {
         if (job.stop || job.status !== 'running') break;
         await this.processPost(job, item);
       }
@@ -198,8 +249,15 @@ class BotService {
   }
 
   async processPost(job, item) {
+    // Validate item
+    if (!item || !item.pk) {
+      console.warn(`[${job.username}] Invalid item received, skipping...`);
+      return;
+    }
+    
     const postId = item.pk;
-    const posterUsername = item.user?.username || 'Unknown';
+    const posterUsername = item.user?.username || item.user?.username || 'Unknown';
+    
     // try to use shortcode/code if present to build public URL
     const shortcode = item.code || item.code_with_id || item.shortcode || null;
     const postLink = shortcode ? `https://www.instagram.com/p/${shortcode}/` : (postId ? `https://www.instagram.com/p/${postId}/` : null);

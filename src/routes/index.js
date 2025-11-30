@@ -210,7 +210,14 @@ router.post('/remove-hashtag', async (req, res) => {
  */
 router.post('/start', async (req, res) => {
   const { username, type, target, startTime, sortType } = req.body;
+  
+  // Check if it's an AJAX request
+  const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
+  
   if (!username) {
+    if (isAjax) {
+      return res.status(400).json({ error: 'No account selected.' });
+    }
     return res.redirect('/?error=No account selected.');
   }
 
@@ -234,9 +241,22 @@ router.post('/start', async (req, res) => {
       });
     }
 
+    if (isAjax) {
+      return res.json({ 
+        success: true, 
+        message: 'ربات با موفقیت شروع شد',
+        username,
+        target,
+        sortType: sortType || 'recent'
+      });
+    }
+    
     res.redirect('/');
   } catch (error) {
     console.error('❌ خطا در شروع ربات:', error);
+    if (isAjax) {
+      return res.status(500).json({ error: error.message });
+    }
     res.redirect(`/?error=${encodeURIComponent(error.message)}`);
   }
 });
@@ -247,6 +267,10 @@ router.post('/start', async (req, res) => {
  */
 router.post('/stop', async (req, res) => {
   const { username } = req.body;
+  
+  // Check if it's an AJAX request
+  const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
+  
   if (username) {
     try {
       await botManager.stopBot(username);
@@ -259,11 +283,23 @@ router.post('/stop', async (req, res) => {
           }
         });
       }
+      
+      if (isAjax) {
+        return res.json({ success: true, message: 'ربات با موفقیت متوقف شد' });
+      }
     } catch (error) {
       console.error('❌ خطا در توقف ربات:', error);
+      if (isAjax) {
+        return res.status(500).json({ error: error.message });
+      }
     }
   }
-  res.redirect('/');
+  
+  if (!isAjax) {
+    res.redirect('/');
+  } else {
+    res.json({ success: true });
+  }
 });
 
 module.exports = router;
