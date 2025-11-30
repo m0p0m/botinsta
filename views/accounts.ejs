@@ -44,6 +44,11 @@
 const addAccountBtn = document.getElementById('add-account-btn');
 const modal = document.getElementById('add-account-modal');
 const closeBtn = modal && modal.querySelector('.close-btn');
-if (addAccountBtn) {addAccountBtn.addEventListener('click', ()=>modal.classList.add('show-modal'))}
-if (closeBtn && modal) {closeBtn.addEventListener('click', ()=>modal.classList.remove('show-modal'));window.addEventListener('click',e=>{if(e.target==modal){modal.classList.remove('show-modal')}});}
+if (addAccountBtn && modal) {
+  addAccountBtn.addEventListener('click', () => modal.classList.add('show'));
+}
+if (closeBtn && modal) {
+  closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+  window.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('show'); });
+}
 </script>

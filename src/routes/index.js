@@ -26,6 +26,8 @@ const PUBLIC_PATHS = [
 router.use((req, res, next) => {
   // allow public assets and login page
   const p = req.path;
+  // expose current path to views for active nav highlighting
+  res.locals.currentPath = p;
   const isPublic = PUBLIC_PATHS.some(pp => p === pp || p.startsWith(pp));
   if (isPublic) return next();
   if (req.session && req.session.isAuthenticated) return next();

@@ -14,9 +14,10 @@
   </head>
   <body>
     <nav class="main-navbar">
-      <a href="/accounts" class="nav-link">اکانت ها</a>
-      <a href="/hashtags" class="nav-link">هشتگ ها</a>
-      <a href="/bot" class="nav-link">کنترل ربات</a>
+      <a href="/" class="nav-link <%= currentPath === '/' ? 'active' : '' %>">داشبورد</a>
+      <a href="/accounts" class="nav-link <%= currentPath && currentPath.startsWith('/accounts') ? 'active' : '' %>">اکانت ها</a>
+      <a href="/hashtags" class="nav-link <%= currentPath && currentPath.startsWith('/hashtags') ? 'active' : '' %>">هشتگ ها</a>
+      <a href="/bot" class="nav-link <%= currentPath && currentPath.startsWith('/bot') ? 'active' : '' %>">کنترل ربات</a>
     </nav>
     <main class="app-container">
       <%- body %>

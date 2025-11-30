@@ -164,7 +164,7 @@
       <div class="empty-icon">🚀</div>
       <h2>خوش‌آمدید!</h2>
       <p>برای شروع، ابتدا یک اکانت Instagram اضافه کنید</p>
-      <button id="add-account-btn" class="btn-primary btn-large">+ افزودن اکانت اول</button>
+      <button id="add-account-btn-empty" class="btn-primary btn-large">+ افزودن اکانت اول</button>
     </div>
   <% } %>
 
@@ -219,14 +219,16 @@
 
 <script>
 (function() {
-  // Modal handling
-  const addAccountBtn = document.getElementById('add-account-btn');
+  // Modal handling: attach to all add-account buttons (there may be multiple)
+  const addAccountBtns = document.querySelectorAll('#add-account-btn, #add-account-btn-empty, .btn-add-account');
   const addAccountModal = document.getElementById('add-account-modal');
   const closeBtn = document.querySelector('.close-btn');
 
-  if (addAccountBtn && addAccountModal) {
-    addAccountBtn.addEventListener('click', () => {
-      addAccountModal.classList.add('show');
+  if (addAccountBtns && addAccountModal) {
+    addAccountBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        addAccountModal.classList.add('show');
+      });
     });
   }
 

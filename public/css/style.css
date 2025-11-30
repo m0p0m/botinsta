@@ -18,16 +18,17 @@ body, html {
 }
 
 .app-container {
-  max-width: 430px;
-  margin: 48px auto;
+  /* wider container for dashboard/layout while keeping mobile responsiveness */
+  max-width: 1100px;
+  margin: 32px auto;
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--color-shadow);
-  padding: 2.5rem 2rem 1.5rem 2rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .login-form, .dashboard-main {
@@ -229,58 +230,7 @@ button:disabled {
   width: auto;
   min-width: 117px;
 }
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  background: #0006;
-  justify-content: center;
-  align-items: center;
-  animation: fadeInModal .22s;
-}
-.show-modal {
-  display: flex !important;
-}
-@keyframes fadeInModal {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0.2px);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(3px);
-  }
-}
-.modal-content {
-  background: #fff;
-  padding: 2.1rem 1.1rem 1.2rem 1.1rem;
-  border-radius: var(--radius);
-  max-width: 97vw;
-  width: 332px;
-  box-shadow: 0 10px 36px rgba(10,132,255,0.18);
-  text-align: center;
-  position: relative;
-  animation: slideUp .22s cubic-bezier(.5,1.2,.8,1); 
-}
-@keyframes slideUp {
-  from { transform: translateY(27px); opacity: 0; }
-  to   { transform: translateY(0);   opacity: 1; }
-}
-.close-btn {
-  font-size: 2.08rem;
-  color: #aaa;
-  position: absolute;
-  left: 13px;
-  top: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color .17s;
-}
-.close-btn:hover {
-  color: #444;
-}
+/* NOTE: modal styles defined later in file (single canonical definition). Removed earlier duplicate/conflicting modal rules. */
 ::-webkit-scrollbar {
   width: 7px;
 }
