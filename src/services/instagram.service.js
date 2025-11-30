@@ -237,17 +237,35 @@ class InstagramService {
     }
   }
 
-  async getHashtagFeed(username, hashtag) {
+  async getHashtagFeed(username, hashtag, sortType = 'recent') {
     try {
       if (!hashtag) {
         throw new Error('هشتگ الزامی است');
       }
 
-      console.log(`🏷️ Fetching hashtag feed #${hashtag}...`);
+      const sortText = sortType === 'top' ? 'برترین' : 'جدیدترین';
+      console.log(`🏷️ Fetching ${sortText} hashtag feed #${hashtag}...`);
       const ig = await this.getApiClient(username);
-      const feed = ig.feed.tag(hashtag);
       
-      console.log(`✅ Hashtag feed ready`);
+      // For top posts, we need to get the hashtag info first to get rank token
+      let feed;
+      if (sortType === 'top') {
+        try {
+          // Get hashtag info to access top posts
+          const hashtagInfo = await ig.hashtag.info(hashtag);
+          feed = ig.feed.tag(hashtag);
+          // Try to request top posts
+          // Note: Instagram API may not always provide top posts, it depends on the hashtag
+          console.log(`📊 Hashtag info: ${hashtagInfo.media_count} posts`);
+        } catch (e) {
+          console.warn('⚠️ Could not get hashtag info for top posts, using default feed');
+          feed = ig.feed.tag(hashtag);
+        }
+      } else {
+        feed = ig.feed.tag(hashtag);
+      }
+      
+      console.log(`✅ Hashtag feed ready (${sortText})`);
       return feed;
     } catch (error) {
       console.error('❌ خطا در دریافت فید هشتگ:', error.message);

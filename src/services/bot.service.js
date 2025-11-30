@@ -37,6 +37,7 @@ class BotService {
       rate_limit_pause: options.rate_limit_pause || 4 * 60 * 60 * 1000,
       polling_delay: options.polling_delay || 3 * 1000,
       delay_between_likes_ms,
+      sortType: options.sortType || 'recent', // 'recent' or 'top'
     };
 
     this.jobs[username] = job;
@@ -58,7 +59,8 @@ class BotService {
         this.run(username);
       }, delay);
     } else {
-      job.onUpdate('running', `🚀 Bot started for @${username}.`);
+      const sortTypeText = job.sortType === 'top' ? 'برترین' : 'جدیدترین';
+      job.onUpdate('running', `🚀 ربات شروع شد! در حال جستجوی ${sortTypeText} پست‌های #${job.target}...`);
       this.run(username);
     }
   }
@@ -82,7 +84,7 @@ class BotService {
     const job = this.jobs[username];
     if (!job || job.stop) {
       delete this.jobs[username];
-      if (job) job.onUpdate('idle', 'Bot stopped.');
+      if (job) job.onUpdate('idle', '⏹️ ربات متوقف شد.');
       return;
     }
 
@@ -95,26 +97,58 @@ class BotService {
         }
       }
     } catch (error) {
-      job.onUpdate('error', `An error occurred: ${error.message}`);
+      console.error(`[${job.username}] Error in bot run:`, error);
+      job.onUpdate('error', `❌ خطا در اجرای ربات: ${error.message}`);
     }
 
     if (!job.stop) {
       if (job.status === 'running') {
-        job.onUpdate('idle', `Waiting for ${job.polling_delay / 1000} seconds before checking for new posts.`);
+        const waitSeconds = Math.round(job.polling_delay / 1000);
+        job.onUpdate('idle', `⏳ منتظر ${waitSeconds} ثانیه قبل از بررسی پست‌های جدید...`);
         setTimeout(() => this.run(username), job.polling_delay);
       }
     } else {
       delete this.jobs[username];
-      job.onUpdate('idle', 'Bot stopped.');
+      job.onUpdate('idle', '⏹️ ربات متوقف شد.');
     }
   }
 
   async likeCommentsByHashtag(job) {
-    job.onUpdate('running', `🏷️ Fetching posts with hashtag: #${job.target}`);
-    const feed = await instagramService.getHashtagFeed(job.username, job.target);
+    const sortTypeText = job.sortType === 'top' ? 'برترین' : 'جدیدترین';
+    job.onUpdate('running', `🏷️ در حال دریافت ${sortTypeText} پست‌های هشتگ: #${job.target}`);
+    const feed = await instagramService.getHashtagFeed(job.username, job.target, job.sortType);
+
+    // fetch first page of items then iterate; some feeds return isMoreAvailable() === false initially
+    let items;
+    try {
+      items = await feed.items();
+    } catch (e) {
+      console.error(`[${job.username}] Error fetching items from hashtag feed #${job.target}:`, e.message || e);
+      job.onUpdate('error', `خطا در گرفتن پست‌ها برای هشتگ #${job.target}: ${e.message || e}`);
+      return;
+    }
+    console.log(`[${job.username}] fetched ${items?.length || 0} items from hashtag #${job.target} (${job.sortType})`);
+    if (!items || items.length === 0) {
+      job.onUpdate('idle', `هیچ پستی برای هشتگ #${job.target} یافت نشد.`);
+      return;
+    }
+    
+    job.onUpdate('running', `✅ ${items.length} پست ${sortTypeText} پیدا شد. شروع به پردازش...`);
+
+    for (const item of items) {
+      if (job.stop || job.status !== 'running') break;
+      await this.processPost(job, item);
+    }
 
     while (feed.isMoreAvailable()) {
-      const items = await feed.items();
+      try {
+        items = await feed.items();
+      } catch (e) {
+        console.error(`[${job.username}] Error fetching next page of hashtag feed #${job.target}:`, e.message || e);
+        break;
+      }
+      console.log(`[${job.username}] fetched ${items?.length || 0} items from next page of #${job.target}`);
+      if (!items || items.length === 0) break;
       for (const item of items) {
         if (job.stop || job.status !== 'running') break;
         await this.processPost(job, item);
@@ -127,8 +161,34 @@ class BotService {
     job.onUpdate('running', `🔍 Fetching posts from explore feed.`);
     const feed = await instagramService.getExploreFeed(job.username);
 
+    let items;
+    try {
+      items = await feed.items();
+    } catch (e) {
+      console.error(`[${job.username}] Error fetching explore feed items:`, e.message || e);
+      job.onUpdate('error', `خطا در گرفتن پست‌ها از اکسپلور: ${e.message || e}`);
+      return;
+    }
+    console.log(`[${job.username}] fetched ${items?.length || 0} items from explore feed`);
+    if (!items || items.length === 0) {
+      job.onUpdate('idle', 'هیچ پستی در فید اکسپلور یافت نشد.');
+      return;
+    }
+
+    for (const item of items) {
+      if (job.stop || job.status !== 'running') break;
+      await this.processPost(job, item);
+    }
+
     while (feed.isMoreAvailable()) {
-      const items = await feed.items();
+      try {
+        items = await feed.items();
+      } catch (e) {
+        console.error(`[${job.username}] Error fetching next page of explore feed:`, e.message || e);
+        break;
+      }
+      console.log(`[${job.username}] fetched ${items?.length || 0} items from next page of explore feed`);
+      if (!items || items.length === 0) break;
       for (const item of items) {
         if (job.stop || job.status !== 'running') break;
         await this.processPost(job, item);
@@ -144,10 +204,26 @@ class BotService {
     const shortcode = item.code || item.code_with_id || item.shortcode || null;
     const postLink = shortcode ? `https://www.instagram.com/p/${shortcode}/` : (postId ? `https://www.instagram.com/p/${postId}/` : null);
 
-    job.onUpdate('processing', `Processing post ${postId} by @${posterUsername}`, { postLink });
+    job.onUpdate('processing', `📄 در حال پردازش پست از @${posterUsername}...`, { postLink });
 
-    const commentsFeed = await instagramService.getPostComments(job.username, postId);
-    const comments = await commentsFeed.items();
+    let comments = [];
+    try {
+      const commentsFeed = await instagramService.getPostComments(job.username, postId);
+      comments = await commentsFeed.items();
+    } catch (e) {
+      console.error(`[${job.username}] Error fetching comments for post ${postId}:`, e.message || e);
+      job.onUpdate('error', `❌ خطا در گرفتن کامنت‌های پست: ${e.message || e}`, { postLink });
+      return;
+    }
+
+    console.log(`[${job.username}] post ${postId} has ${comments?.length || 0} comments`);
+
+    if (!comments || comments.length === 0) {
+      job.onUpdate('idle', `⚠️ این پست کامنتی ندارد`, { postLink });
+      return;
+    }
+
+    job.onUpdate('processing', `💬 پیدا شد ${comments.length} کامنت. شروع به لایک...`, { postLink });
 
     let commentLikesCount = 0;
     for (const comment of comments) {
@@ -156,25 +232,34 @@ class BotService {
     }
 
     if (commentLikesCount > 0) {
-      job.onUpdate('post_completed', `✅ Post ${postId} by @${posterUsername}: Liked ${commentLikesCount} comments`, { postLink, likes: job.likes });
+      job.onUpdate('post_completed', `✅ پست از @${posterUsername}: ${commentLikesCount} کامنت لایک شد | مجموع: ${job.likes} لایک`, { postLink, likes: job.likes });
+    } else {
+      job.onUpdate('idle', `⚠️ پست پردازش شد اما کامنتی لایک نشد`, { postLink });
     }
   }
 
   async likeComment(job, comment, postId, postLink = null) {
     try {
-      job.onUpdate('liking', `Liking comment by @${comment.user.username}`, { postLink });
+      const commentUsername = comment.user?.username || 'ناشناس';
+      console.log(`[${job.username}] attempting to like comment ${comment.pk} by @${commentUsername} on post ${postId}`);
+      
       await instagramService.likeComment(job.username, comment.pk);
       job.likes++;
-      job.onUpdate('liked', `❤️ Liked comment by @${comment.user.username} (Post: ${postId}) | Total: ${job.likes}`, { postLink, likes: job.likes });
+      console.log(`[${job.username}] liked comment ${comment.pk} (total likes: ${job.likes})`);
+      
+      job.onUpdate('liked', `❤️ کامنت از @${commentUsername} لایک شد | مجموع: ${job.likes} لایک`, { postLink, likes: job.likes });
+      
       await new Promise(resolve => setTimeout(resolve, job.delay_between_likes_ms));
       return 1;
     } catch (error) {
       if (error instanceof IgActionSpamError) {
         job.status = 'paused';
-        job.onUpdate('paused', `⏸️ Rate limited. Pausing for ${Math.round(job.rate_limit_pause / (60 * 1000))} minutes.`);
+        const pauseMinutes = Math.round(job.rate_limit_pause / (60 * 1000));
+        job.onUpdate('paused', `⏸️ محدودیت نرخ! ربات برای ${pauseMinutes} دقیقه متوقف می‌شود.`);
         setTimeout(() => this.testLike(job), job.rate_limit_pause);
       } else {
-        job.onUpdate('error', `❌ Failed to like comment: ${error.message}`);
+        console.error(`[${job.username}] Error liking comment:`, error.message);
+        job.onUpdate('error', `❌ خطا در لایک کامنت: ${error.message}`, { postLink });
       }
       return 0;
     }

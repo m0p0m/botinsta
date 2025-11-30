@@ -23,7 +23,7 @@ class BotManagerService {
   /**
    * شروع ربات و ذخیره state
    */
-  async startBot(username, type, target, startTime = null) {
+  async startBot(username, type, target, startTime = null, sortType = 'recent') {
     try {
       // ذخیره state
       await this.saveState(username, {
@@ -31,6 +31,7 @@ class BotManagerService {
         type,
         target,
         startTime,
+        sortType,
         status: 'running',
         startedAt: new Date().toISOString()
       });
@@ -38,7 +39,7 @@ class BotManagerService {
       // شروع ربات
       botService.start(username, type, target, (status, message, meta) => {
         this.updateBotStatus(username, status, message, meta);
-      }, {}, startTime);
+      }, { sortType }, startTime);
 
       console.log(`✅ ربات برای ${username} شروع شد`);
       return true;
@@ -130,7 +131,7 @@ class BotManagerService {
           console.log(`🚀 شروع ربات برای ${state.username}...`);
           botService.start(state.username, state.type, state.target, (status, message, meta) => {
             this.updateBotStatus(state.username, status, message, meta);
-          }, {}, state.startTime);
+          }, { sortType: state.sortType || 'recent' }, state.startTime);
         }
       }
 

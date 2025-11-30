@@ -99,7 +99,7 @@
                 </select>
               </div>
               <div class="form-group">
-                <label>هدف</label>
+                <label>هدف (هشتگ)</label>
                 <select id="target-select" name="target" required>
                   <option value="">انتخاب کنید...</option>
                   <% if (hashtags && hashtags.length) { %>
@@ -107,6 +107,13 @@
                       <option value="<%= h %>">#<%= h %></option>
                     <% }) %>
                   <% } %>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>نوع پست‌ها</label>
+                <select name="sortType" id="sort-type" required>
+                  <option value="recent">🆕 جدیدترین</option>
+                  <option value="top">⭐ برترین</option>
                 </select>
               </div>
               <div class="form-group">
@@ -121,6 +128,13 @@
             <input type="hidden" name="username" value="<%= selectedAccount %>">
             <button type="submit" id="stop-btn" class="btn-stop">⏹️ توقف ربات</button>
           </form>
+          
+          <div id="bot-starting-indicator" class="bot-starting-indicator" style="display: none;">
+            <div class="indicator-content">
+              <div class="spinner"></div>
+              <span>در حال شروع ربات...</span>
+            </div>
+          </div>
         </div>
 
         <!-- Status Area -->
@@ -133,6 +147,10 @@
             <div class="status-row">
               <span class="label">وضعیت ربات:</span>
               <span class="value" id="bot-status">🔴 غیرفعال</span>
+            </div>
+            <div class="status-row" id="current-target-row" style="display: none;">
+              <span class="label">هشتگ فعلی:</span>
+              <span class="value" id="current-target">-</span>
             </div>
             <div class="status-row">
               <span class="label">تعداد لایک:</span>
@@ -147,9 +165,12 @@
 
         <!-- Activity Log -->
         <div class="activity-area">
-          <h3>📝 گزارش فعالیت</h3>
+          <div class="activity-header">
+            <h3>📝 گزارش فعالیت</h3>
+            <button id="clear-log-btn" class="btn-clear-log" title="پاک کردن لاگ">🗑️</button>
+          </div>
           <div class="activity-log" id="activity-log">
-            <div class="log-entry">
+            <div class="log-entry log-info">
               <span class="log-time">-</span>
               <span class="log-msg">منتظر شروع ربات...</span>
             </div>
@@ -299,12 +320,47 @@
 
   // Start form handler
   const startForm = document.getElementById('start-form');
+  const botTypeSelect = document.getElementById('bot-type');
+  const targetSelect = document.getElementById('target-select');
+  
+  // Show/hide target select based on bot type
+  if (botTypeSelect && targetSelect) {
+    botTypeSelect.addEventListener('change', () => {
+      if (botTypeSelect.value === 'hashtag') {
+        targetSelect.closest('.form-group').style.display = 'flex';
+        targetSelect.required = true;
+      } else {
+        targetSelect.closest('.form-group').style.display = 'none';
+        targetSelect.required = false;
+      }
+    });
+    
+    // Initial state
+    if (botTypeSelect.value !== 'hashtag') {
+      targetSelect.closest('.form-group').style.display = 'none';
+      targetSelect.required = false;
+    }
+  }
+  
   if (startForm) {
     startForm.addEventListener('submit', (e) => {
       e.preventDefault();
       const startBtn = document.getElementById('start-btn');
+      const botType = document.getElementById('bot-type').value;
+      const target = document.getElementById('target-select').value;
+      
+      if (botType === 'hashtag' && !target) {
+        alert('لطفا یک هشتگ انتخاب کنید');
+        return;
+      }
+      
       startBtn.disabled = true;
       startBtn.textContent = '⏳ در حال شروع...';
+      
+      // Show starting indicator
+      const indicator = document.getElementById('bot-starting-indicator');
+      if (indicator) indicator.style.display = 'block';
+      
       startForm.submit();
     });
   }
@@ -315,7 +371,7 @@
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(protocol + '//' + window.location.host);
 
-      ws.onmessage = (event) => {
+          ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
         // Update status
@@ -329,8 +385,21 @@
 
           if (data.status === 'running') {
             botIsRunning = true;
-            if (statusEl) statusEl.textContent = '🟢 فعال';
-            if (statusLight) statusLight.classList.remove('inactive');
+            
+            // Hide starting indicator
+            const indicator = document.getElementById('bot-starting-indicator');
+            if (indicator) indicator.style.display = 'none';
+            
+            if (statusEl) {
+              statusEl.textContent = '🟢 فعال و در حال کار';
+              statusEl.style.color = '#31c48d';
+              statusEl.classList.add('running');
+            }
+            if (statusLight) {
+              statusLight.classList.remove('inactive');
+              statusLight.classList.add('running');
+              statusLight.style.background = '#31c48d';
+            }
             if (startForm) startForm.style.display = 'none';
             if (stopForm) stopForm.style.display = 'block';
             if (startBtn) {
@@ -340,11 +409,19 @@
           } else if (data.status === 'paused') {
             botIsRunning = false;
             if (statusEl) statusEl.textContent = '🟡 متوقف موقت';
-            if (statusLight) statusLight.classList.add('inactive');
+            if (statusEl) statusEl.style.color = '#ffa500';
+            if (statusLight) {
+              statusLight.classList.add('inactive');
+              statusLight.style.background = '#ffa500';
+            }
           } else {
             botIsRunning = false;
             if (statusEl) statusEl.textContent = '🔴 غیرفعال';
-            if (statusLight) statusLight.classList.add('inactive');
+            if (statusEl) statusEl.style.color = '#ff3b30';
+            if (statusLight) {
+              statusLight.classList.add('inactive');
+              statusLight.style.background = '#ccc';
+            }
             if (startForm) startForm.style.display = 'block';
             if (stopForm) stopForm.style.display = 'none';
             if (startBtn) {
@@ -352,6 +429,14 @@
               startBtn.textContent = '▶️ شروع ربات';
             }
           }
+        }
+
+        // Update current target
+        if (data.target) {
+          const targetRow = document.getElementById('current-target-row');
+          const targetEl = document.getElementById('current-target');
+          if (targetRow) targetRow.style.display = 'flex';
+          if (targetEl) targetEl.textContent = `#${data.target}`;
         }
 
         // Update activity message and likes
@@ -376,8 +461,17 @@
           const log = document.getElementById('activity-log');
           if (log) {
             const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            const time = new Date().toLocaleTimeString('en-US', {
+            
+            // Determine log entry type based on status
+            let logClass = 'log-entry';
+            if (data.status === 'running') logClass += ' log-success';
+            else if (data.status === 'error') logClass += ' log-error';
+            else if (data.status === 'liked' || data.status === 'post_completed') logClass += ' log-success';
+            else if (data.status === 'processing' || data.status === 'liking') logClass += ' log-info';
+            else logClass += ' log-info';
+            
+            entry.className = logClass;
+            const time = new Date().toLocaleTimeString('fa-IR', {
               hour: '2-digit',
               minute: '2-digit',
               second: '2-digit'
@@ -385,19 +479,24 @@
 
             // if server provided a postLink, render clickable anchor
             let msgHtml = '';
+            const safeMsg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
             if (data.postLink) {
-              const safeMsg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-              msgHtml = `${safeMsg} <a href="${data.postLink}" target="_blank" rel="noopener noreferrer">مشاهده پست</a>`;
+              msgHtml = `${safeMsg} <a href="${data.postLink}" target="_blank" rel="noopener noreferrer" class="post-link">🔗 مشاهده پست</a>`;
             } else {
-              msgHtml = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              msgHtml = safeMsg;
             }
 
             entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msgHtml}</span>`;
             log.insertBefore(entry, log.firstChild);
 
-            while (log.children.length > 50) {
+            // Keep only last 100 entries
+            while (log.children.length > 100) {
               log.removeChild(log.lastChild);
             }
+            
+            // Auto-scroll to top
+            log.scrollTop = 0;
           }
         }
       };
@@ -427,6 +526,17 @@
     setTimeout(() => {
       notification.remove();
     }, 3000);
+  }
+
+  // Clear log button
+  const clearLogBtn = document.getElementById('clear-log-btn');
+  if (clearLogBtn) {
+    clearLogBtn.addEventListener('click', () => {
+      const log = document.getElementById('activity-log');
+      if (log && confirm('آیا می‌خواهید تمام لاگ‌ها را پاک کنید؟')) {
+        log.innerHTML = '<div class="log-entry log-info"><span class="log-time">-</span><span class="log-msg">لاگ پاک شد. منتظر فعالیت جدید...</span></div>';
+      }
+    });
   }
 
   if (document.querySelector('.status-area')) {

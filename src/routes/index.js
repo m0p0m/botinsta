@@ -209,20 +209,27 @@ router.post('/remove-hashtag', async (req, res) => {
  * @route POST /start
  */
 router.post('/start', async (req, res) => {
-  const { username, type, target, startTime } = req.body;
+  const { username, type, target, startTime, sortType } = req.body;
   if (!username) {
     return res.redirect('/?error=No account selected.');
   }
 
   try {
     // شروع ربات و ذخیره state
-    await botManager.startBot(username, type, target, startTime);
+    await botManager.startBot(username, type, target, startTime, sortType || 'recent');
 
     // ارسال update برای تمام connected clients
     if (req.wss) {
+      const sortTypeText = sortType === 'top' ? 'برترین' : 'جدیدترین';
       req.wss.clients.forEach(client => {
         if (client.readyState === 1) {
-          client.send(JSON.stringify({ status: 'running', message: `ربات برای ${username} شروع شد` }));
+          client.send(JSON.stringify({ 
+            status: 'running', 
+            message: `🚀 ربات برای ${username} شروع شد - در حال جستجوی ${sortTypeText} پست‌های #${target}`,
+            username,
+            target,
+            sortType: sortType || 'recent'
+          }));
         }
       });
     }
