@@ -350,7 +350,24 @@
       const target = document.getElementById('target-select').value;
       const sortType = document.getElementById('sort-type').value;
       const startTime = document.querySelector('input[name="startTime"]').value;
-      const username = document.querySelector('input[name="username"]').value;
+      const usernameInput = document.querySelector('input[name="username"]');
+      let username = usernameInput ? usernameInput.value : null;
+      
+      // If username is empty, try to get it from the form's hidden input
+      if (!username || username.trim() === '') {
+        const hiddenUsername = document.querySelector('#start-form input[name="username"]');
+        username = hiddenUsername ? hiddenUsername.value : null;
+      }
+      
+      // Debug log
+      console.log('Form data:', { username, botType, target, sortType, startTime });
+      console.log('Username input value:', usernameInput ? usernameInput.value : 'not found');
+      
+      if (!username || username.trim() === '') {
+        showNotification('❌ لطفا ابتدا یک اکانت انتخاب کنید');
+        console.error('Username is empty!');
+        return;
+      }
       
       if (botType === 'hashtag' && !target) {
         showNotification('❌ لطفا یک هشتگ انتخاب کنید');
@@ -385,20 +402,30 @@
           body: formData
         });
         
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error('Error parsing JSON response:', jsonError);
+          const text = await response.text();
+          console.error('Response text:', text);
+          throw new Error('پاسخ نامعتبر از سرور');
+        }
         
         if (response.ok && data.success) {
           showNotification('✅ ' + data.message);
           // Form will be hidden by WebSocket update
         } else {
-          showNotification('❌ ' + (data.error || 'خطا در شروع ربات'));
+          const errorMsg = data.error || data.message || 'خطا در شروع ربات';
+          console.error('Bot start error:', errorMsg, 'Status:', response.status);
+          showNotification('❌ ' + errorMsg);
           startBtn.disabled = false;
           startBtn.textContent = '▶️ شروع ربات';
           if (indicator) indicator.style.display = 'none';
         }
       } catch (error) {
         console.error('Error starting bot:', error);
-        showNotification('❌ خطا در ارتباط با سرور');
+        showNotification('❌ خطا در ارتباط با سرور: ' + (error.message || 'خطای نامشخص'));
         startBtn.disabled = false;
         startBtn.textContent = '▶️ شروع ربات';
         if (indicator) indicator.style.display = 'none';

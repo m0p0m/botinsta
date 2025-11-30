@@ -1,32 +1,423 @@
-<div class="bot-controls">
-  <h2>کنترل ربات اینستاگرام</h2>
-  <form id="start-form" action="/start" method="POST">
-    <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount : '' %>">
-    <select name="type" <%= !selectedAccount ? 'disabled' : '' %>>
-      <option value="hashtag">هشتگ</option>
-      <option value="explore">اکسپلور</option>
-    </select>
-    <select name="target" <%= !selectedAccount ? 'disabled' : '' %>>
-      <% hashtags.forEach(function(hashtag) { %>
-        <option value="<%= hashtag %>"><%= hashtag %></option>
-      <% }) %>
-    </select>
-    <input type="time" name="startTime" <%= !selectedAccount ? 'disabled' : '' %>>
-    <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>شروع</button>
-  </form>
-  <form id="stop-form" action="/stop" method="POST">
-    <input type="hidden" name="username" value="<%= selectedAccount ? selectedAccount : '' %>">
-    <button type="submit" <%= !selectedAccount ? 'disabled' : '' %>>توقف</button>
-  </form>
-  <div class="status-panel">
-    <h3>وضعیت ربات</h3>
-    <p><strong>وضعیت:</strong> <span id="status">غیرفعال</span></p>
+<div class="dashboard-main">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-content"><%= error %></div>
+    </div>
+  <% } %>
+
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="header-content">
+      <h1>🤖 کنترل ربات اینستاگرام</h1>
+      <p class="header-subtitle">شروع و توقف ربات</p>
+    </div>
+    <% if (selectedAccount) { %>
+      <div class="account-badge">
+        <span class="badge-icon">✓</span>
+        <span class="badge-text"><%= selectedAccount %></span>
+      </div>
+    <% } %>
   </div>
-  <div class="activity-log">
-    <h3>گزارش فعالیت</h3>
-    <ul id="log-list"></ul>
-  </div>
+
+  <% if (accounts && accounts.length) { %>
+    <!-- Bot Controls -->
+    <section class="section section-full">
+      <div class="section-header"><h2>⚙️ کنترل ربات</h2></div>
+      <div class="bot-panel">
+        <form id="start-form" action="/start" method="POST">
+          <input type="hidden" name="username" value="<%= selectedAccount %>">
+          <div class="form-row">
+            <div class="form-group">
+              <label>نوع عملیات</label>
+              <select name="type" id="bot-type" required>
+                <option value="">انتخاب کنید...</option>
+                <option value="hashtag">🏷️ هشتگ</option>
+                <option value="explore">🔍 اکسپلور</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>هدف (هشتگ)</label>
+              <select id="target-select" name="target" required>
+                <option value="">انتخاب کنید...</option>
+                <% if (hashtags && hashtags.length) { %>
+                  <% hashtags.forEach(function(h){ %>
+                    <option value="<%= h %>">#<%= h %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>نوع پست‌ها</label>
+              <select name="sortType" id="sort-type" required>
+                <option value="recent">🆕 جدیدترین</option>
+                <option value="top">⭐ برترین</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>زمان شروع (اختیاری)</label>
+              <input type="time" name="startTime">
+            </div>
+          </div>
+          <button type="submit" id="start-btn" class="btn-start">▶️ شروع ربات</button>
+        </form>
+
+        <form id="stop-form" action="/stop" method="POST" style="display:none;">
+          <input type="hidden" name="username" value="<%= selectedAccount %>">
+          <button type="submit" id="stop-btn" class="btn-stop">⏹️ توقف ربات</button>
+        </form>
+        
+        <div id="bot-starting-indicator" class="bot-starting-indicator" style="display: none;">
+          <div class="indicator-content">
+            <div class="spinner"></div>
+            <span>در حال شروع ربات...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Area -->
+      <div class="status-area">
+        <div class="status-header">
+          <h3>📊 وضعیت فعلی</h3>
+          <span class="status-light inactive" id="status-light"></span>
+        </div>
+        <div class="status-info">
+          <div class="status-row">
+            <span class="label">وضعیت ربات:</span>
+            <span class="value" id="bot-status">🔴 غیرفعال</span>
+          </div>
+          <div class="status-row">
+            <span class="label">تعداد لایک:</span>
+            <span class="value" id="bot-likes">0</span>
+          </div>
+          <div class="status-row">
+            <span class="label">فعالیت:</span>
+            <span class="value" id="bot-activity">بدون فعالیت</span>
+          </div>
+          <div class="status-row" id="current-target-row" style="display: none;">
+            <span class="label">هشتگ فعلی:</span>
+            <span class="value" id="current-target">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="activity-area">
+        <div class="activity-header">
+          <h3>📝 گزارش فعالیت</h3>
+          <button id="clear-log-btn" class="btn-clear-log" title="پاک کردن لاگ">🗑️</button>
+        </div>
+        <div class="activity-log" id="activity-log">
+          <div class="log-entry log-info">
+            <span class="log-time">-</span>
+            <span class="log-msg">منتظر شروع ربات...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  <% } else { %>
+    <!-- Empty State -->
+    <div class="empty-state">
+      <div class="empty-icon">🚀</div>
+      <h2>خوش‌آمدید!</h2>
+      <p>برای شروع، ابتدا یک اکانت Instagram اضافه کنید</p>
+      <a href="/" class="btn-primary btn-large">بازگشت به داشبورد</a>
+    </div>
+  <% } %>
 </div>
+
 <script>
-// نمونه به‌روزرسانی وضعیت و log در آینده: WebSocket یا Polling
+(function() {
+  // Bot state management
+  let botIsRunning = false;
+
+  // Start form handler
+  const startForm = document.getElementById('start-form');
+  const botTypeSelect = document.getElementById('bot-type');
+  const targetSelect = document.getElementById('target-select');
+  
+  // Show/hide target select based on bot type
+  if (botTypeSelect && targetSelect) {
+    botTypeSelect.addEventListener('change', () => {
+      if (botTypeSelect.value === 'hashtag') {
+        targetSelect.closest('.form-group').style.display = 'flex';
+        targetSelect.required = true;
+      } else {
+        targetSelect.closest('.form-group').style.display = 'none';
+        targetSelect.required = false;
+      }
+    });
+    
+    // Initial state
+    if (botTypeSelect.value !== 'hashtag') {
+      targetSelect.closest('.form-group').style.display = 'none';
+      targetSelect.required = false;
+    }
+  }
+  
+  if (startForm) {
+    startForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const startBtn = document.getElementById('start-btn');
+      const botType = document.getElementById('bot-type').value;
+      const target = document.getElementById('target-select').value;
+      const sortType = document.getElementById('sort-type').value;
+      const startTime = document.querySelector('input[name="startTime"]').value;
+      const usernameInput = document.querySelector('input[name="username"]');
+      let username = usernameInput ? usernameInput.value : null;
+      
+      if (!username || username.trim() === '') {
+        const hiddenUsername = document.querySelector('#start-form input[name="username"]');
+        username = hiddenUsername ? hiddenUsername.value : null;
+      }
+      
+      if (botType === 'hashtag' && !target) {
+        showNotification('❌ لطفا یک هشتگ انتخاب کنید');
+        return;
+      }
+      
+      if (!botType) {
+        showNotification('❌ لطفا نوع عملیات را انتخاب کنید');
+        return;
+      }
+      
+      if (!username || username.trim() === '') {
+        showNotification('❌ لطفا ابتدا یک اکانت انتخاب کنید');
+        return;
+      }
+      
+      startBtn.disabled = true;
+      startBtn.textContent = '⏳ در حال شروع...';
+      
+      const indicator = document.getElementById('bot-starting-indicator');
+      if (indicator) indicator.style.display = 'block';
+      
+      try {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('type', botType);
+        formData.append('target', target);
+        formData.append('sortType', sortType);
+        if (startTime) formData.append('startTime', startTime);
+        
+        const response = await fetch('/start', {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        });
+        
+        let data;
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          throw new Error('پاسخ نامعتبر از سرور');
+        }
+        
+        if (response.ok && data.success) {
+          showNotification('✅ ' + data.message);
+        } else {
+          const errorMsg = data.error || data.message || 'خطا در شروع ربات';
+          showNotification('❌ ' + errorMsg);
+          startBtn.disabled = false;
+          startBtn.textContent = '▶️ شروع ربات';
+          if (indicator) indicator.style.display = 'none';
+        }
+      } catch (error) {
+        console.error('Error starting bot:', error);
+        showNotification('❌ خطا در ارتباط با سرور: ' + (error.message || 'خطای نامشخص'));
+        startBtn.disabled = false;
+        startBtn.textContent = '▶️ شروع ربات';
+        if (indicator) indicator.style.display = 'none';
+      }
+    });
+  }
+  
+  // Stop form handler
+  const stopForm = document.getElementById('stop-form');
+  if (stopForm) {
+    stopForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const stopBtn = document.getElementById('stop-btn');
+      const username = document.querySelector('#stop-form input[name="username"]').value;
+      
+      stopBtn.disabled = true;
+      stopBtn.textContent = '⏳ در حال توقف...';
+      
+      try {
+        const formData = new FormData();
+        formData.append('username', username);
+        
+        const response = await fetch('/stop', {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          showNotification('✅ ' + data.message);
+        } else {
+          showNotification('❌ ' + (data.error || 'خطا در توقف ربات'));
+          stopBtn.disabled = false;
+          stopBtn.textContent = '⏹️ توقف ربات';
+        }
+      } catch (error) {
+        console.error('Error stopping bot:', error);
+        showNotification('❌ خطا در ارتباط با سرور');
+        stopBtn.disabled = false;
+        stopBtn.textContent = '⏹️ توقف ربات';
+      }
+    });
+  }
+
+  // WebSocket for bot status
+  function initWebSocket() {
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(protocol + '//' + window.location.host);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.status) {
+          const statusEl = document.getElementById('bot-status');
+          const statusLight = document.getElementById('status-light');
+          const startBtn = document.getElementById('start-btn');
+          const stopBtn = document.getElementById('stop-btn');
+          const stopForm = document.getElementById('stop-form');
+          const startForm = document.getElementById('start-form');
+
+          if (data.status === 'running') {
+            botIsRunning = true;
+            const indicator = document.getElementById('bot-starting-indicator');
+            if (indicator) indicator.style.display = 'none';
+            
+            if (statusEl) {
+              statusEl.textContent = '🟢 فعال و در حال کار';
+              statusEl.style.color = '#31c48d';
+              statusEl.classList.add('running');
+            }
+            if (statusLight) {
+              statusLight.classList.remove('inactive');
+              statusLight.classList.add('running');
+              statusLight.style.background = '#31c48d';
+            }
+            if (startForm) startForm.style.display = 'none';
+            if (stopForm) stopForm.style.display = 'block';
+          } else {
+            botIsRunning = false;
+            if (statusEl) {
+              statusEl.textContent = '🔴 غیرفعال';
+              statusEl.style.color = '#ff3b30';
+            }
+            if (statusLight) {
+              statusLight.classList.add('inactive');
+              statusLight.style.background = '#ccc';
+            }
+            if (startForm) startForm.style.display = 'block';
+            if (stopForm) stopForm.style.display = 'none';
+          }
+        }
+
+        if (data.target) {
+          const targetRow = document.getElementById('current-target-row');
+          const targetEl = document.getElementById('current-target');
+          if (targetRow) targetRow.style.display = 'flex';
+          if (targetEl) targetEl.textContent = `#${data.target}`;
+        }
+
+        if (data.message) {
+          const activity = document.getElementById('bot-activity');
+          if (activity) activity.textContent = data.message;
+
+          if (typeof data.likes !== 'undefined') {
+            const likesEl = document.getElementById('bot-likes');
+            if (likesEl) likesEl.textContent = data.likes;
+          }
+
+          const log = document.getElementById('activity-log');
+          if (log) {
+            const entry = document.createElement('div');
+            let logClass = 'log-entry';
+            if (data.status === 'running') logClass += ' log-success';
+            else if (data.status === 'error') logClass += ' log-error';
+            else if (data.status === 'liked' || data.status === 'post_completed') logClass += ' log-success';
+            else if (data.status === 'processing' || data.status === 'liking') logClass += ' log-info';
+            else logClass += ' log-info';
+            
+            entry.className = logClass;
+            const time = new Date().toLocaleTimeString('fa-IR', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            });
+
+            let msgHtml = '';
+            const safeMsg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            if (data.postLink) {
+              msgHtml = `${safeMsg} <a href="${data.postLink}" target="_blank" rel="noopener noreferrer" class="post-link">🔗 مشاهده پست</a>`;
+            } else {
+              msgHtml = safeMsg;
+            }
+
+            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msgHtml}</span>`;
+            log.insertBefore(entry, log.firstChild);
+
+            while (log.children.length > 100) {
+              log.removeChild(log.lastChild);
+            }
+            
+            log.scrollTop = 0;
+          }
+        }
+      };
+
+      ws.onerror = (error) => console.error('WebSocket error:', error);
+      ws.onclose = () => setTimeout(initWebSocket, 3000);
+    } catch (e) {
+      console.error('WebSocket error:', e);
+    }
+  }
+
+  function showNotification(message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 2rem;
+      right: 1rem;
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 999;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+
+  // Clear log button
+  const clearLogBtn = document.getElementById('clear-log-btn');
+  if (clearLogBtn) {
+    clearLogBtn.addEventListener('click', () => {
+      const log = document.getElementById('activity-log');
+      if (log && confirm('آیا می‌خواهید تمام لاگ‌ها را پاک کنید؟')) {
+        log.innerHTML = '<div class="log-entry log-info"><span class="log-time">-</span><span class="log-msg">لاگ پاک شد. منتظر فعالیت جدید...</span></div>';
+      }
+    });
+  }
+
+  if (document.querySelector('.status-area')) {
+    initWebSocket();
+  }
+})();
 </script>

@@ -67,8 +67,8 @@ router.get('/bot', async (req, res) => {
   const accounts = await instagramService.getAccounts();
   res.render('bot', {
     selectedAccount: req.session.selectedUsername || null,
-    hashtags,
-    accounts,
+    hashtags: hashtags || [],
+    accounts: accounts || [],
     error: req.query.error
   });
 });
@@ -214,16 +214,37 @@ router.post('/start', async (req, res) => {
   // Check if it's an AJAX request
   const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
   
-  if (!username) {
+  // Get username from body or session
+  const selectedUsername = username || req.session?.selectedUsername;
+  
+  if (!selectedUsername) {
+    console.error('❌ No username provided in request body or session');
+    console.error('Request body:', req.body);
+    console.error('Session:', req.session);
     if (isAjax) {
-      return res.status(400).json({ error: 'No account selected.' });
+      return res.status(400).json({ error: 'هیچ اکانتی انتخاب نشده است. لطفا ابتدا یک اکانت انتخاب کنید.' });
     }
     return res.redirect('/?error=No account selected.');
+  }
+  
+  // Validate required fields
+  if (!type) {
+    if (isAjax) {
+      return res.status(400).json({ error: 'نوع عملیات را انتخاب کنید.' });
+    }
+    return res.redirect('/?error=Type is required.');
+  }
+  
+  if (type === 'hashtag' && !target) {
+    if (isAjax) {
+      return res.status(400).json({ error: 'لطفا یک هشتگ انتخاب کنید.' });
+    }
+    return res.redirect('/?error=Hashtag is required for hashtag type.');
   }
 
   try {
     // شروع ربات و ذخیره state
-    await botManager.startBot(username, type, target, startTime, sortType || 'recent');
+    await botManager.startBot(selectedUsername, type, target, startTime, sortType || 'recent');
 
     // ارسال update برای تمام connected clients
     if (req.wss) {
@@ -232,8 +253,8 @@ router.post('/start', async (req, res) => {
         if (client.readyState === 1) {
           client.send(JSON.stringify({ 
             status: 'running', 
-            message: `🚀 ربات برای ${username} شروع شد - در حال جستجوی ${sortTypeText} پست‌های #${target}`,
-            username,
+            message: `🚀 ربات برای ${selectedUsername} شروع شد - در حال جستجوی ${sortTypeText} پست‌های #${target}`,
+            username: selectedUsername,
             target,
             sortType: sortType || 'recent'
           }));
@@ -245,7 +266,7 @@ router.post('/start', async (req, res) => {
       return res.json({ 
         success: true, 
         message: 'ربات با موفقیت شروع شد',
-        username,
+        username: selectedUsername,
         target,
         sortType: sortType || 'recent'
       });
@@ -255,7 +276,7 @@ router.post('/start', async (req, res) => {
   } catch (error) {
     console.error('❌ خطا در شروع ربات:', error);
     if (isAjax) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ error: error.message || 'خطای نامشخص در شروع ربات' });
     }
     res.redirect(`/?error=${encodeURIComponent(error.message)}`);
   }
