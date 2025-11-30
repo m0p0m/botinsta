@@ -25,7 +25,7 @@
     <section class="section section-full">
       <div class="section-header"><h2>⚙️ کنترل ربات</h2></div>
       <div class="bot-panel">
-        <form id="start-form" action="/start" method="POST">
+  <form id="start-form" action="/start" method="POST">
           <input type="hidden" name="username" value="<%= selectedAccount %>">
           <div class="form-row">
             <div class="form-group">
@@ -34,7 +34,7 @@
                 <option value="">انتخاب کنید...</option>
                 <option value="hashtag">🏷️ هشتگ</option>
                 <option value="explore">🔍 اکسپلور</option>
-              </select>
+    </select>
             </div>
             <div class="form-group">
               <label>هدف (هشتگ)</label>
@@ -43,7 +43,7 @@
                 <% if (hashtags && hashtags.length) { %>
                   <% hashtags.forEach(function(h){ %>
                     <option value="<%= h %>">#<%= h %></option>
-                  <% }) %>
+      <% }) %>
                 <% } %>
               </select>
             </div>
@@ -52,7 +52,7 @@
               <select name="sortType" id="sort-type" required>
                 <option value="recent">🆕 جدیدترین</option>
                 <option value="top">⭐ برترین</option>
-              </select>
+    </select>
             </div>
             <div class="form-group">
               <label>زمان شروع (اختیاری)</label>
@@ -60,12 +60,12 @@
             </div>
           </div>
           <button type="submit" id="start-btn" class="btn-start">▶️ شروع ربات</button>
-        </form>
+  </form>
 
         <form id="stop-form" action="/stop" method="POST" style="display:none;">
           <input type="hidden" name="username" value="<%= selectedAccount %>">
           <button type="submit" id="stop-btn" class="btn-stop">⏹️ توقف ربات</button>
-        </form>
+  </form>
         
         <div id="bot-starting-indicator" class="bot-starting-indicator" style="display: none;">
           <div class="indicator-content">
@@ -113,7 +113,7 @@
             <span class="log-msg">منتظر شروع ربات...</span>
           </div>
         </div>
-      </div>
+  </div>
     </section>
   <% } else { %>
     <!-- Empty State -->
@@ -122,7 +122,7 @@
       <h2>خوش‌آمدید!</h2>
       <p>برای شروع، ابتدا یک اکانت Instagram اضافه کنید</p>
       <a href="/" class="btn-primary btn-large">بازگشت به داشبورد</a>
-    </div>
+  </div>
   <% } %>
 </div>
 
@@ -193,19 +193,20 @@
       if (indicator) indicator.style.display = 'block';
       
       try {
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('type', botType);
-        formData.append('target', target);
-        formData.append('sortType', sortType);
-        if (startTime) formData.append('startTime', startTime);
+        const params = new URLSearchParams();
+        params.append('username', username);
+        params.append('type', botType);
+        params.append('target', target);
+        params.append('sortType', sortType);
+        if (startTime) params.append('startTime', startTime);
         
         const response = await fetch('/start', {
           method: 'POST',
           headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
           },
-          body: formData
+          body: params.toString()
         });
         
         let data;
@@ -246,15 +247,16 @@
       stopBtn.textContent = '⏳ در حال توقف...';
       
       try {
-        const formData = new FormData();
-        formData.append('username', username);
+        const params = new URLSearchParams();
+        params.append('username', username);
         
         const response = await fetch('/stop', {
           method: 'POST',
           headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
           },
-          body: formData
+          body: params.toString()
         });
         
         const data = await response.json();

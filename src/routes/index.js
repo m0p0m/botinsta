@@ -209,13 +209,23 @@ router.post('/remove-hashtag', async (req, res) => {
  * @route POST /start
  */
 router.post('/start', async (req, res) => {
-  const { username, type, target, startTime, sortType } = req.body;
-  
   // Check if it's an AJAX request
   const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
   
-  // Debug log
-  console.log('POST /start - Request body:', { username, type, target, startTime, sortType });
+  // Debug log - show raw body first
+  console.log('[DEBUG] POST /start - Content-Type:', req.headers['content-type']);
+  console.log('[DEBUG] POST /start - Raw body:', req.body);
+  console.log('[DEBUG] POST /start - Body keys:', Object.keys(req.body || {}));
+  
+  // Get all possible field names (in case frontend sends different names)
+  const username = req.body.username;
+  const type = req.body.type || req.body.botType || ''; // Support both 'type' and 'botType'
+  const target = req.body.target || '';
+  const startTime = req.body.startTime || '';
+  const sortType = req.body.sortType || 'recent';
+  
+  // Debug log - show parsed values
+  console.log('[DEBUG] POST /start - Parsed values:', { username, type, target, startTime, sortType });
   
   // Get username from body or session
   const selectedUsername = username || req.session?.selectedUsername;

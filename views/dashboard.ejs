@@ -216,6 +216,7 @@
             id="modal-password"
             name="password" 
             placeholder="رمز عبور" 
+            autocomplete="current-password"
             required
             minlength="6"
           >
@@ -387,12 +388,13 @@
       if (indicator) indicator.style.display = 'block';
       
       try {
-        const formData = new FormData();
-        formData.append('username', username || '');
-        formData.append('type', botType || '');
-        formData.append('target', target || '');
-        formData.append('sortType', sortType || 'recent');
-        if (startTime) formData.append('startTime', startTime);
+        // Use URLSearchParams instead of FormData for better compatibility
+        const params = new URLSearchParams();
+        params.append('username', username || '');
+        params.append('type', botType || '');
+        params.append('target', target || '');
+        params.append('sortType', sortType || 'recent');
+        if (startTime) params.append('startTime', startTime);
         
         // Debug: Log form data
         console.log('Sending form data:', {
@@ -403,12 +405,22 @@
           startTime: startTime || 'none'
         });
         
+        // Verify botType is not empty
+        if (!botType || botType.trim() === '') {
+          showNotification('❌ لطفا نوع عملیات را انتخاب کنید');
+          startBtn.disabled = false;
+          startBtn.textContent = '▶️ شروع ربات';
+          if (indicator) indicator.style.display = 'none';
+          return;
+        }
+        
         const response = await fetch('/start', {
           method: 'POST',
           headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
           },
-          body: formData
+          body: params.toString()
         });
         
         let data;
@@ -454,15 +466,16 @@
       stopBtn.textContent = '⏳ در حال توقف...';
       
       try {
-        const formData = new FormData();
-        formData.append('username', username);
+        const params = new URLSearchParams();
+        params.append('username', username);
         
         const response = await fetch('/stop', {
           method: 'POST',
           headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded'
           },
-          body: formData
+          body: params.toString()
         });
         
         const data = await response.json();

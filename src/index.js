@@ -48,6 +48,7 @@ app.use(Logger.middleware());
 
 // Middleware - Body Parser
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
 // Middleware - Session
 app.use(session({
