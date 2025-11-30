@@ -49,14 +49,14 @@ class BotService {
       }
 
       const delay = startDate.getTime() - now.getTime();
-      job.onUpdate('scheduled', `Bot scheduled to start at ${startDate.toLocaleTimeString()}`);
+      job.onUpdate('scheduled', `⏰ Bot scheduled to start at ${startDate.toLocaleTimeString()}`);
 
       setTimeout(() => {
-        job.onUpdate('running', `Bot started for ${username}.`);
+        job.onUpdate('running', `🚀 Bot started for @${username}.`);
         this.run(username);
       }, delay);
     } else {
-      job.onUpdate('running', `Bot started for ${username}.`);
+      job.onUpdate('running', `🚀 Bot started for @${username}.`);
       this.run(username);
     }
   }
@@ -108,7 +108,7 @@ class BotService {
   }
 
   async likeCommentsByHashtag(job) {
-    job.onUpdate('running', `Fetching posts with hashtag: ${job.target}`);
+    job.onUpdate('running', `🏷️ Fetching posts with hashtag: #${job.target}`);
     const feed = await instagramService.getHashtagFeed(job.username, job.target);
 
     while (feed.isMoreAvailable()) {
@@ -122,7 +122,7 @@ class BotService {
   }
 
   async likeCommentsFromExplore(job) {
-    job.onUpdate('running', 'Fetching posts from explore feed.');
+    job.onUpdate('running', `🔍 Fetching posts from explore feed.`);
     const feed = await instagramService.getExploreFeed(job.username);
 
     while (feed.isMoreAvailable()) {
@@ -136,30 +136,42 @@ class BotService {
   }
 
   async processPost(job, item) {
-    const commentsFeed = await instagramService.getPostComments(job.username, item.pk);
+    const postId = item.pk;
+    const posterUsername = item.user?.username || 'Unknown';
+    
+    job.onUpdate('processing', `Processing post ${postId} by @${posterUsername}`);
+    
+    const commentsFeed = await instagramService.getPostComments(job.username, postId);
     const comments = await commentsFeed.items();
 
+    let commentLikesCount = 0;
     for (const comment of comments) {
       if (job.stop || job.status !== 'running') break;
-      await this.likeComment(job, comment);
+      commentLikesCount += await this.likeComment(job, comment, postId);
+    }
+    
+    if (commentLikesCount > 0) {
+      job.onUpdate('post_completed', `✅ Post ${postId} by @${posterUsername}: Liked ${commentLikesCount} comments`);
     }
   }
 
-  async likeComment(job, comment) {
+  async likeComment(job, comment, postId) {
     try {
-      job.onUpdate('liking', `Liking comment by ${comment.user.username}`);
+      job.onUpdate('liking', `Liking comment by @${comment.user.username}`);
       await instagramService.likeComment(job.username, comment.pk);
       job.likes++;
-      job.onUpdate('liked', `Liked comment by ${comment.user.username}. Total likes: ${job.likes}`);
+      job.onUpdate('liked', `❤️ Liked comment by @${comment.user.username} (Post: ${postId}) | Total: ${job.likes}`);
       await new Promise(resolve => setTimeout(resolve, job.delay_between_likes_ms));
+      return 1;
     } catch (error) {
       if (error instanceof IgActionSpamError) {
         job.status = 'paused';
-        job.onUpdate('paused', `Rate limited. Pausing for ${job.rate_limit_pause / (60 * 1000)} minutes.`);
+        job.onUpdate('paused', `⏸️ Rate limited. Pausing for ${Math.round(job.rate_limit_pause / (60 * 1000))} minutes.`);
         setTimeout(() => this.testLike(job), job.rate_limit_pause);
       } else {
-        job.onUpdate('error', `Failed to like comment: ${error.message}`);
+        job.onUpdate('error', `❌ Failed to like comment: ${error.message}`);
       }
+      return 0;
     }
   }
 

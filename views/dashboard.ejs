@@ -20,7 +20,7 @@
     <% } %>
   </div>
 
-  <% if (selectedAccount && accounts && accounts.length) { %>
+  <% if (accounts && accounts.length) { %>
     <!-- Main Grid -->
     <div class="sections-grid">
       <!-- Accounts -->
@@ -92,7 +92,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label>نوع عملیات</label>
-                <select name="type" required>
+                <select name="type" id="bot-type" required>
                   <option value="">انتخاب کنید...</option>
                   <option value="hashtag">🏷️ هشتگ</option>
                   <option value="explore">🔍 اکسپلور</option>
@@ -114,12 +114,12 @@
                 <input type="time" name="startTime">
               </div>
             </div>
-            <button type="submit" class="btn-start">▶️ شروع ربات</button>
+            <button type="submit" id="start-btn" class="btn-start">▶️ شروع ربات</button>
           </form>
 
-          <form id="stop-form" action="/stop" method="POST">
+          <form id="stop-form" action="/stop" method="POST" style="display:none;">
             <input type="hidden" name="username" value="<%= selectedAccount %>">
-            <button type="submit" class="btn-stop">⏹️ توقف ربات</button>
+            <button type="submit" id="stop-btn" class="btn-stop">⏹️ توقف ربات</button>
           </form>
         </div>
 
@@ -127,12 +127,16 @@
         <div class="status-area">
           <div class="status-header">
             <h3>📊 وضعیت فعلی</h3>
-            <span class="status-light inactive"></span>
+            <span class="status-light inactive" id="status-light"></span>
           </div>
           <div class="status-info">
             <div class="status-row">
               <span class="label">وضعیت ربات:</span>
-              <span class="value" id="bot-status">غیرفعال</span>
+              <span class="value" id="bot-status">🔴 غیرفعال</span>
+            </div>
+            <div class="status-row">
+              <span class="label">تعداد لایک:</span>
+              <span class="value" id="bot-likes">0</span>
             </div>
             <div class="status-row">
               <span class="label">فعالیت:</span>
@@ -288,6 +292,21 @@
     });
   }
 
+  // Bot state management
+  let botIsRunning = false;
+
+  // Start form handler
+  const startForm = document.getElementById('start-form');
+  if (startForm) {
+    startForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const startBtn = document.getElementById('start-btn');
+      startBtn.disabled = true;
+      startBtn.textContent = '⏳ در حال شروع...';
+      startForm.submit();
+    });
+  }
+
   // WebSocket for bot status
   function initWebSocket() {
     try {
@@ -296,25 +315,69 @@
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        
+        // Update status
         if (data.status) {
-          const status = document.getElementById('bot-status');
-          if (status) {
-            status.textContent = data.status === 'running' ? '🟢 فعال' : '🔴 غیرفعال';
+          const statusEl = document.getElementById('bot-status');
+          const statusLight = document.getElementById('status-light');
+          const startBtn = document.getElementById('start-btn');
+          const stopBtn = document.getElementById('stop-btn');
+          const stopForm = document.getElementById('stop-form');
+          const startForm = document.getElementById('start-form');
+
+          if (data.status === 'running') {
+            botIsRunning = true;
+            if (statusEl) statusEl.textContent = '🟢 فعال';
+            if (statusLight) statusLight.classList.remove('inactive');
+            if (startForm) startForm.style.display = 'none';
+            if (stopForm) stopForm.style.display = 'block';
+            if (startBtn) {
+              startBtn.disabled = false;
+              startBtn.textContent = '▶️ شروع ربات';
+            }
+          } else if (data.status === 'paused') {
+            botIsRunning = false;
+            if (statusEl) statusEl.textContent = '🟡 متوقف موقت';
+            if (statusLight) statusLight.classList.add('inactive');
+          } else {
+            botIsRunning = false;
+            if (statusEl) statusEl.textContent = '🔴 غیرفعال';
+            if (statusLight) statusLight.classList.add('inactive');
+            if (startForm) startForm.style.display = 'block';
+            if (stopForm) stopForm.style.display = 'none';
+            if (startBtn) {
+              startBtn.disabled = false;
+              startBtn.textContent = '▶️ شروع ربات';
+            }
           }
         }
+
+        // Update activity message
         if (data.message) {
           const activity = document.getElementById('bot-activity');
           if (activity) activity.textContent = data.message;
           
+          // Extract likes count from message if available
+          const likesMatch = data.message.match(/Total: (\d+)/i) || data.message.match(/\| Total: (\d+)/);
+          if (likesMatch && likesMatch[1]) {
+            const likesEl = document.getElementById('bot-likes');
+            if (likesEl) likesEl.textContent = likesMatch[1];
+          }
+          
+          // Add to activity log
           const log = document.getElementById('activity-log');
           if (log) {
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            const time = new Date().toLocaleTimeString('fa-IR');
+            const time = new Date().toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              second: '2-digit'
+            });
             entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${data.message}</span>`;
             log.insertBefore(entry, log.firstChild);
             
-            while (log.children.length > 20) {
+            while (log.children.length > 25) {
               log.removeChild(log.lastChild);
             }
           }

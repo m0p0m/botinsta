@@ -709,9 +709,16 @@ button:disabled {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  width: 100%;
 }
 
-.btn-start:hover {
+.btn-start:disabled {
+  background: #bccbe1;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.btn-start:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(49, 196, 141, 0.3);
 }
@@ -726,9 +733,10 @@ button:disabled {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  width: 100%;
 }
 
-.btn-stop:hover {
+.btn-stop:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(255, 59, 48, 0.3);
 }
@@ -757,21 +765,25 @@ button:disabled {
 }
 
 .status-light {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #999;
+  background: #ccc;
   transition: all 0.3s;
 }
 
-.status-light.active {
+.status-light.inactive {
+  background: #ccc;
+}
+
+.status-light:not(.inactive) {
   background: #31c48d;
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(49, 196, 141, 0.7); }
+  50% { opacity: 0.8; box-shadow: 0 0 8px 2px rgba(49, 196, 141, 0.4); }
 }
 
 .status-info {
