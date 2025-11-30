@@ -388,11 +388,20 @@
       
       try {
         const formData = new FormData();
-        formData.append('username', username);
-        formData.append('type', botType);
-        formData.append('target', target);
-        formData.append('sortType', sortType);
+        formData.append('username', username || '');
+        formData.append('type', botType || '');
+        formData.append('target', target || '');
+        formData.append('sortType', sortType || 'recent');
         if (startTime) formData.append('startTime', startTime);
+        
+        // Debug: Log form data
+        console.log('Sending form data:', {
+          username: username || 'EMPTY',
+          type: botType || 'EMPTY',
+          target: target || 'EMPTY',
+          sortType: sortType || 'recent',
+          startTime: startTime || 'none'
+        });
         
         const response = await fetch('/start', {
           method: 'POST',

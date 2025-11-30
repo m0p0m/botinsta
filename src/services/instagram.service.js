@@ -101,7 +101,7 @@ class InstagramService {
           throw new Error('خطا در اتصال به Instagram. اتصال اینترنت را بررسی کنید');
         }
 
-        console.error('❌ خطای لاگین:', loginError);
+        console.error('[ERROR] Login error:', loginError);
         throw new Error(`خطای ورود: ${loginError.message || 'خطای نامشخص'}`);
       }
 
@@ -144,14 +144,14 @@ class InstagramService {
         console.log(`🔄 Session updated for ${username}`);
       } else {
         accounts.push(sessionData);
-        console.log(`➕ حساب جدید ${username} ذخیره شد`);
+        console.log(`[ACCOUNT] New account ${username} saved`);
       }
 
       await fs.writeFile(accountsFilePath, JSON.stringify(accounts, null, 2));
       return loggedInUser;
 
     } catch (error) {
-      console.error('❌ خطا در سرویس لاگین:', error.message);
+      console.error(`[ERROR] Login service error:`, error.message);
       throw error;
     }
   }
@@ -168,10 +168,10 @@ class InstagramService {
       return Array.isArray(accounts) ? accounts : [];
     } catch (error) {
       if (error.code === 'ENOENT') {
-        console.log('📁 Creating accounts.json file...');
+        console.log('[ACCOUNT] Creating accounts.json file...');
         return [];
       }
-      console.error('❌ خطا در خواندن accounts.json:', error.message);
+      console.error(`[ERROR] Failed to read accounts.json:`, error.message);
       return [];
     }
   }
@@ -197,10 +197,10 @@ class InstagramService {
       this._configureDevice(account.username);
       await ig.state.deserialize(account.session);
       
-      console.log(`✅ API Client ready for ${username}`);
+      console.log(`[SUCCESS] API Client ready for ${username}`);
       return ig;
     } catch (error) {
-      console.error('❌ خطا در دریافت API Client:', error.message);
+      console.error(`[ERROR] Failed to get API Client:`, error.message);
       throw error;
     }
   }
@@ -211,7 +211,7 @@ class InstagramService {
         throw new Error('نام کاربری الزامی است');
       }
 
-      console.log(`📊 Fetching profile data for ${username}...`);
+      console.log(`[PROFILE] Fetching profile data for ${username}...`);
       const ig = await this.getApiClient(username);
       
       const userId = await ig.user.getIdByUsername(username);
@@ -229,10 +229,10 @@ class InstagramService {
         is_private: userInfo.is_private || false,
       };
 
-      console.log(`✅ Profile data fetched`);
+      console.log(`[SUCCESS] Profile data fetched`);
       return profileData;
     } catch (error) {
-      console.error('❌ خطا در دریافت اطلاعات پروفایل:', error.message);
+      console.error(`[ERROR] Failed to get profile data:`, error.message);
       throw error;
     }
   }
@@ -250,8 +250,7 @@ class InstagramService {
         throw new Error('هشتگ معتبر نیست');
       }
 
-      const sortText = sortType === 'top' ? 'برترین' : 'جدیدترین';
-      console.log(`🏷️ Fetching ${sortText} hashtag feed #${cleanHashtag}...`);
+      console.log(`[HASHTAG] Fetching ${sortType} hashtag feed #${cleanHashtag}...`);
       const ig = await this.getApiClient(username);
       
       // Verify ig object has required methods
@@ -263,42 +262,42 @@ class InstagramService {
       if (ig.hashtag && typeof ig.hashtag.info === 'function') {
         try {
           const hashtagInfo = await ig.hashtag.info(cleanHashtag);
-          console.log(`📊 Hashtag info: ${hashtagInfo.media_count || 0} posts, name: ${hashtagInfo.name || cleanHashtag}`);
+          console.log(`[HASHTAG] Info: ${hashtagInfo.media_count || 0} posts, name: ${hashtagInfo.name || cleanHashtag}`);
           
           if (hashtagInfo.media_count === 0) {
-            console.warn(`⚠️ هشتگ #${cleanHashtag} هیچ پستی ندارد`);
+            console.warn(`[WARN] Hashtag #${cleanHashtag} has no posts`);
           }
         } catch (infoError) {
           // If we can't get info, continue anyway - the feed might still work
-          console.warn(`⚠️ Could not get hashtag info for #${cleanHashtag}:`, infoError.message);
+          console.warn(`[WARN] Could not get hashtag info for #${cleanHashtag}:`, infoError.message);
           // Don't throw - continue to try getting the feed
         }
       } else {
-        console.warn('⚠️ hashtag.info method not available, skipping info check');
+        console.warn('[WARN] hashtag.info method not available, skipping info check');
       }
       
       // Get the tag feed
       // Note: instagram-private-api's feed.tag() returns recent posts by default
       const feed = ig.feed.tag(cleanHashtag);
       
-      console.log(`✅ Hashtag feed ready (${sortText})`);
+      console.log(`[SUCCESS] Hashtag feed ready (${sortType})`);
       return feed;
     } catch (error) {
-      console.error('❌ خطا در دریافت فید هشتگ:', error.message);
+      console.error(`[ERROR] Failed to get hashtag feed:`, error.message);
       throw error;
     }
   }
 
   async getExploreFeed(username) {
     try {
-      console.log(`🔍 Fetching explore feed...`);
+      console.log(`[EXPLORE] Fetching explore feed...`);
       const ig = await this.getApiClient(username);
       const feed = ig.feed.discover();
       
-      console.log(`✅ Explore feed ready`);
+      console.log(`[SUCCESS] Explore feed ready`);
       return feed;
     } catch (error) {
-      console.error('❌ خطا در دریافت فید کاوش:', error.message);
+      console.error(`[ERROR] Failed to get explore feed:`, error.message);
       throw error;
     }
   }
@@ -311,14 +310,14 @@ class InstagramService {
         throw new Error('mediaId الزامی است');
       }
 
-      console.log(`💬 Fetching post comments...`);
+      console.log(`[COMMENTS] Fetching post comments for media ${mediaId}...`);
       const ig = await this.getApiClient(username);
       const feed = await ig.media.commentsFeed(mediaId);
       
-      console.log(`✅ Post comments fetched`);
+      console.log(`[SUCCESS] Post comments fetched`);
       return feed;
     } catch (error) {
-      console.error('❌ خطا در دریافت کامنت‌های پست:', error.message);
+      console.error(`[ERROR] Failed to get post comments:`, error.message);
       throw error;
     }
   }
@@ -329,14 +328,14 @@ class InstagramService {
         throw new Error('commentId الزامی است');
       }
 
-      console.log(`❤️ Liking comment...`);
+      console.log(`[LIKE] Liking comment ${commentId}...`);
       const ig = await this.getApiClient(username);
       const result = await ig.media.likeComment(commentId);
       
-      console.log(`✅ Comment liked`);
+      console.log(`[SUCCESS] Comment liked`);
       return result;
     } catch (error) {
-      console.error('❌ خطا در لایک کردن کامنت:', error.message);
+      console.error(`[ERROR] Failed to like comment:`, error.message);
       throw error;
     }
   }
@@ -355,9 +354,9 @@ class InstagramService {
       }
 
       await fs.writeFile(accountsFilePath, JSON.stringify(filteredAccounts, null, 2), 'utf8');
-      console.log(`✅ حساب "${username}" حذف شد`);
+      console.log(`[SUCCESS] Account "${username}" removed`);
     } catch (error) {
-      console.error('❌ خطا در حذف حساب:', error.message);
+      console.error(`[ERROR] Failed to remove account:`, error.message);
       throw error;
     }
   }

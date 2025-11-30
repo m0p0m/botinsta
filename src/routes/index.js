@@ -134,11 +134,11 @@ router.post('/add-account', async (req, res) => {
   }
 
   try {
-    console.log(`\n🔄 درخواست ورود: ${username}`);
+    console.log(`[LOGIN] Login request for: ${username}`);
     const loggedInUser = await instagramService.login(username, password);
     
     req.session.selectedUsername = username;
-    console.log(`✅ ورود موفق و Session ذخیره شد\n`);
+    console.log(`[SUCCESS] Login successful, session saved\n`);
     
     return res.redirect('/?success=حساب با موفقیت اضافه شد');
 
@@ -214,13 +214,16 @@ router.post('/start', async (req, res) => {
   // Check if it's an AJAX request
   const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
   
+  // Debug log
+  console.log('POST /start - Request body:', { username, type, target, startTime, sortType });
+  
   // Get username from body or session
   const selectedUsername = username || req.session?.selectedUsername;
   
   if (!selectedUsername) {
-    console.error('❌ No username provided in request body or session');
-    console.error('Request body:', req.body);
-    console.error('Session:', req.session);
+    console.error('[ERROR] No username provided in request body or session');
+    console.error('[DEBUG] Request body:', req.body);
+    console.error('[DEBUG] Session:', req.session);
     if (isAjax) {
       return res.status(400).json({ error: 'هیچ اکانتی انتخاب نشده است. لطفا ابتدا یک اکانت انتخاب کنید.' });
     }
@@ -228,7 +231,8 @@ router.post('/start', async (req, res) => {
   }
   
   // Validate required fields
-  if (!type) {
+  if (!type || type.trim() === '') {
+    console.error('[ERROR] Type is missing or empty. Request body:', req.body);
     if (isAjax) {
       return res.status(400).json({ error: 'نوع عملیات را انتخاب کنید.' });
     }
@@ -274,7 +278,7 @@ router.post('/start', async (req, res) => {
     
     res.redirect('/');
   } catch (error) {
-    console.error('❌ خطا در شروع ربات:', error);
+    console.error(`[ERROR] Failed to start bot:`, error);
     if (isAjax) {
       return res.status(500).json({ error: error.message || 'خطای نامشخص در شروع ربات' });
     }
@@ -309,7 +313,7 @@ router.post('/stop', async (req, res) => {
         return res.json({ success: true, message: 'ربات با موفقیت متوقف شد' });
       }
     } catch (error) {
-      console.error('❌ خطا در توقف ربات:', error);
+      console.error(`[ERROR] Failed to stop bot:`, error);
       if (isAjax) {
         return res.status(500).json({ error: error.message });
       }

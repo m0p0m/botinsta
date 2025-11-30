@@ -41,10 +41,10 @@ class BotManagerService {
         this.updateBotStatus(username, status, message, meta);
       }, { sortType }, startTime);
 
-      console.log(`✅ ربات برای ${username} شروع شد`);
+      console.log(`[SUCCESS] Bot started for ${username}`);
       return true;
     } catch (error) {
-      console.error('❌ خطا در شروع ربات:', error.message);
+      console.error(`[ERROR] Failed to start bot for ${username}:`, error.message);
       throw error;
     }
   }
@@ -59,10 +59,10 @@ class BotManagerService {
       // حذف state
       await this.deleteState(username);
 
-      console.log(`✅ ربات برای ${username} متوقف شد`);
+      console.log(`[SUCCESS] Bot stopped for ${username}`);
       return true;
     } catch (error) {
-      console.error('❌ خطا در توقف ربات:', error.message);
+      console.error(`[ERROR] Failed to stop bot for ${username}:`, error.message);
       throw error;
     }
   }
@@ -90,9 +90,9 @@ class BotManagerService {
       states.push(botState);
 
       await fs.writeFile(stateFile, JSON.stringify(states, null, 2));
-      console.log(`💾 state برای ${username} ذخیره شد`);
+      console.log(`[STATE] Saved state for ${username}`);
     } catch (error) {
-      console.error('❌ خطا در ذخیره state:', error.message);
+      console.error(`[ERROR] Failed to save state for ${username}:`, error.message);
     }
   }
 
@@ -112,7 +112,7 @@ class BotManagerService {
       states = states.filter(s => s.username !== username);
       await fs.writeFile(stateFile, JSON.stringify(states, null, 2));
     } catch (error) {
-      console.error('❌ خطا در حذف state:', error.message);
+      console.error(`[ERROR] Failed to delete state for ${username}:`, error.message);
     }
   }
 
@@ -124,21 +124,21 @@ class BotManagerService {
       const content = await fs.readFile(stateFile, 'utf8');
       const states = JSON.parse(content);
 
-      console.log(`\n📂 درحال بارگیری ${states.length} ربات از state...`);
+      console.log(`\n[STATE] Loading ${states.length} bots from state...`);
 
       for (const state of states) {
         if (state.status === 'running') {
-          console.log(`🚀 شروع ربات برای ${state.username}...`);
+          console.log(`[STATE] Starting bot for ${state.username}...`);
           botService.start(state.username, state.type, state.target, (status, message, meta) => {
             this.updateBotStatus(state.username, status, message, meta);
           }, { sortType: state.sortType || 'recent' }, state.startTime);
         }
       }
 
-      console.log(`✅ ${states.length} ربات بارگیری شد\n`);
+      console.log(`[SUCCESS] ${states.length} bots loaded\n`);
     } catch (error) {
       if (error.code !== 'ENOENT') {
-        console.error('⚠️ خطا در بارگیری state:', error.message);
+        console.error(`[ERROR] Failed to load state:`, error.message);
       }
     }
   }
