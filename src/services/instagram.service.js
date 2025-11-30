@@ -258,7 +258,11 @@ class InstagramService {
         throw new Error('API Client به درستی initialize نشده است');
       }
       
-      // Try to get hashtag info if available (optional - don't fail if it doesn't work)
+      // Get the tag feed first
+      const feed = ig.feed.tag(cleanHashtag);
+      
+      // Try to get hashtag info to set proper rank_token
+      // This helps avoid 404 errors with rank_token
       if (ig.hashtag && typeof ig.hashtag.info === 'function') {
         try {
           const hashtagInfo = await ig.hashtag.info(cleanHashtag);
@@ -267,18 +271,26 @@ class InstagramService {
           if (hashtagInfo.media_count === 0) {
             console.warn(`[WARN] Hashtag #${cleanHashtag} has no posts`);
           }
+          
+          // Set rank_token from hashtag info if available
+          // Format: {hashtag_id}_{user_id}
+          // Try different ways to get user ID
+          const userId = ig.state.cookieUserId || ig.state.userId || ig.state.loggedInUser?.pk;
+          if (hashtagInfo.id && userId) {
+            const rankToken = `${hashtagInfo.id}_${userId}`;
+            feed.rankToken = rankToken;
+            console.log(`[HASHTAG] Set rank_token: ${rankToken}`);
+          } else {
+            console.warn(`[WARN] Could not get userId for rank_token. Hashtag ID: ${hashtagInfo.id}, User ID: ${userId}`);
+          }
         } catch (infoError) {
-          // If we can't get info, continue anyway - the feed might still work
+          // If we can't get info, continue anyway - the feed might still work with default rankToken
           console.warn(`[WARN] Could not get hashtag info for #${cleanHashtag}:`, infoError.message);
           // Don't throw - continue to try getting the feed
         }
       } else {
-        console.warn('[WARN] hashtag.info method not available, skipping info check');
+        console.warn('[WARN] hashtag.info method not available, using default rankToken');
       }
-      
-      // Get the tag feed
-      // Note: instagram-private-api's feed.tag() returns recent posts by default
-      const feed = ig.feed.tag(cleanHashtag);
       
       console.log(`[SUCCESS] Hashtag feed ready (${sortType})`);
       return feed;

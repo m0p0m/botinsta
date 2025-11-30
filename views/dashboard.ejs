@@ -533,9 +533,9 @@
             }
             if (startForm) startForm.style.display = 'none';
             if (stopForm) stopForm.style.display = 'block';
-            if (startBtn) {
-              startBtn.disabled = false;
-              startBtn.textContent = '▶️ شروع ربات';
+            if (stopBtn) {
+              stopBtn.disabled = false;
+              stopBtn.textContent = '⏹️ توقف ربات';
             }
           } else if (data.status === 'paused') {
             botIsRunning = false;

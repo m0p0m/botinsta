@@ -138,15 +138,21 @@ class BotService {
         status: e.response?.status
       });
       
-      // Check if it's a 404 error - might be invalid hashtag or API issue
+      // Check if it's a 404 error - might be invalid hashtag, rank_token issue, or API change
       if (e.message && (e.message.includes('404') || e.message.includes('Not Found'))) {
-        job.onUpdate('error', `❌ هشتگ #${job.target} پیدا نشد یا دسترسی به آن ممکن نیست. لطفا هشتگ دیگری امتحان کنید.`);
+        // Check if it's a rank_token issue (404 with rank_token in URL)
+        if (e.message.includes('rank_token')) {
+          console.warn(`[${job.username}] 404 error with rank_token - this might be an API issue. Trying alternative approach...`);
+          job.onUpdate('error', `⚠️ خطا در دریافت پست‌های هشتگ #${job.target}. ممکن است این هشتگ وجود نداشته باشد یا API اینستاگرام تغییر کرده باشد. لطفا یک هشتگ انگلیسی یا معتبرتر امتحان کنید.`);
+        } else {
+          job.onUpdate('error', `❌ هشتگ #${job.target} پیدا نشد یا دسترسی به آن ممکن نیست. لطفا هشتگ دیگری امتحان کنید.`);
+        }
         // Wait longer before retrying for invalid hashtag
         job.polling_delay = 30 * 1000; // 30 seconds
       } else if (e.message && e.message.includes('429')) {
         job.onUpdate('error', `⏸️ محدودیت نرخ! لطفا چند دقیقه صبر کنید و دوباره تلاش کنید.`);
         job.polling_delay = 5 * 60 * 1000; // 5 minutes
-      } else if (e.message && e.message.includes('401') || e.message.includes('Unauthorized')) {
+      } else if (e.message && (e.message.includes('401') || e.message.includes('Unauthorized'))) {
         job.onUpdate('error', `🔐 خطا در احراز هویت. لطفا دوباره وارد شوید.`);
         job.status = 'error';
       } else {
