@@ -20,9 +20,11 @@ class BotService {
       this.stop(username);
     }
 
-    const total_likes_target = options.total_likes_target || 700;
-    const time_period_hours = options.time_period_hours || 12;
-    const delay_between_likes_ms = (time_period_hours * 60 * 60 * 1000) / total_likes_target;
+    const total_likes_target = options.total_likes_target;
+    const time_period_hours = options.time_period_hours;
+    // allow explicit override, otherwise compute if both values provided, otherwise default to 2500ms
+    const delay_between_likes_ms = options.delay_between_likes_ms ||
+      (total_likes_target && time_period_hours ? (time_period_hours * 60 * 60 * 1000) / total_likes_target : 2500);
 
     const job = {
       username,
@@ -33,7 +35,7 @@ class BotService {
       likes: 0,
       stop: false,
       rate_limit_pause: options.rate_limit_pause || 4 * 60 * 60 * 1000,
-      polling_delay: options.polling_delay || 1 * 60 * 1000,
+      polling_delay: options.polling_delay || 3 * 1000,
       delay_between_likes_ms,
     };
 
@@ -138,29 +140,32 @@ class BotService {
   async processPost(job, item) {
     const postId = item.pk;
     const posterUsername = item.user?.username || 'Unknown';
-    
-    job.onUpdate('processing', `Processing post ${postId} by @${posterUsername}`);
-    
+    // try to use shortcode/code if present to build public URL
+    const shortcode = item.code || item.code_with_id || item.shortcode || null;
+    const postLink = shortcode ? `https://www.instagram.com/p/${shortcode}/` : (postId ? `https://www.instagram.com/p/${postId}/` : null);
+
+    job.onUpdate('processing', `Processing post ${postId} by @${posterUsername}`, { postLink });
+
     const commentsFeed = await instagramService.getPostComments(job.username, postId);
     const comments = await commentsFeed.items();
 
     let commentLikesCount = 0;
     for (const comment of comments) {
       if (job.stop || job.status !== 'running') break;
-      commentLikesCount += await this.likeComment(job, comment, postId);
+      commentLikesCount += await this.likeComment(job, comment, postId, postLink);
     }
-    
+
     if (commentLikesCount > 0) {
-      job.onUpdate('post_completed', `✅ Post ${postId} by @${posterUsername}: Liked ${commentLikesCount} comments`);
+      job.onUpdate('post_completed', `✅ Post ${postId} by @${posterUsername}: Liked ${commentLikesCount} comments`, { postLink, likes: job.likes });
     }
   }
 
-  async likeComment(job, comment, postId) {
+  async likeComment(job, comment, postId, postLink = null) {
     try {
-      job.onUpdate('liking', `Liking comment by @${comment.user.username}`);
+      job.onUpdate('liking', `Liking comment by @${comment.user.username}`, { postLink });
       await instagramService.likeComment(job.username, comment.pk);
       job.likes++;
-      job.onUpdate('liked', `❤️ Liked comment by @${comment.user.username} (Post: ${postId}) | Total: ${job.likes}`);
+      job.onUpdate('liked', `❤️ Liked comment by @${comment.user.username} (Post: ${postId}) | Total: ${job.likes}`, { postLink, likes: job.likes });
       await new Promise(resolve => setTimeout(resolve, job.delay_between_likes_ms));
       return 1;
     } catch (error) {

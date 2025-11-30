@@ -12,7 +12,12 @@ const stateFile = path.join(__dirname, '..', '..', 'data', 'bot-state.json');
 class BotManagerService {
   constructor() {
     this.activeBots = {};
+    this.wss = null;
     this.loadState();
+  }
+
+  setWss(wss) {
+    this.wss = wss;
   }
 
   /**
@@ -31,8 +36,8 @@ class BotManagerService {
       });
 
       // شروع ربات
-      botService.start(username, type, target, (status, message) => {
-        this.updateBotStatus(username, status, message);
+      botService.start(username, type, target, (status, message, meta) => {
+        this.updateBotStatus(username, status, message, meta);
       }, {}, startTime);
 
       console.log(`✅ ربات برای ${username} شروع شد`);
@@ -123,8 +128,8 @@ class BotManagerService {
       for (const state of states) {
         if (state.status === 'running') {
           console.log(`🚀 شروع ربات برای ${state.username}...`);
-          botService.start(state.username, state.type, state.target, (status, message) => {
-            this.updateBotStatus(state.username, status, message);
+          botService.start(state.username, state.type, state.target, (status, message, meta) => {
+            this.updateBotStatus(state.username, status, message, meta);
           }, {}, state.startTime);
         }
       }
@@ -140,8 +145,26 @@ class BotManagerService {
   /**
    * به‌روزرسانی status ربات
    */
-  updateBotStatus(username, status, message) {
+  updateBotStatus(username, status, message, meta = {}) {
+    const payload = Object.assign({ username, status, message }, meta);
     console.log(`[${username}] ${status}: ${message}`);
+
+    // broadcast to all connected websocket clients if available
+    try {
+      if (this.wss && this.wss.clients) {
+        this.wss.clients.forEach(client => {
+          if (client.readyState === 1) {
+            try {
+              client.send(JSON.stringify(payload));
+            } catch (e) {
+              // ignore send errors for individual clients
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.error('⚠️ Error broadcasting bot status via WebSocket:', e.message);
+    }
   }
 
   /**

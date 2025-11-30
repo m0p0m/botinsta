@@ -3,7 +3,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const Config = require('../config');
 
-const accountsFilePath = path.join(__dirname, '../data/accounts.json');
+const accountsFilePath = path.join(__dirname, '../../data/accounts.json');
 
 // Instagram User-Agent برای تشابه با برنامه اصلی - لیست دستگاه‌های واقعی
 const INSTAGRAM_USER_AGENTS = [

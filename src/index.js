@@ -17,6 +17,12 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// expose wss to bot manager for broadcasting background updates
+const botManagerInstance = require('./services/bot-manager.service');
+if (botManagerInstance && typeof botManagerInstance.setWss === 'function') {
+  botManagerInstance.setWss(wss);
+}
+
 // Configure View Engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '../views'));

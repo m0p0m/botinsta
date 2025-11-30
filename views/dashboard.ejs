@@ -354,32 +354,48 @@
           }
         }
 
-        // Update activity message
+        // Update activity message and likes
         if (data.message) {
           const activity = document.getElementById('bot-activity');
           if (activity) activity.textContent = data.message;
-          
-          // Extract likes count from message if available
-          const likesMatch = data.message.match(/Total: (\d+)/i) || data.message.match(/\| Total: (\d+)/);
-          if (likesMatch && likesMatch[1]) {
+
+          // If structured likes provided, update likes counter
+          if (typeof data.likes !== 'undefined') {
             const likesEl = document.getElementById('bot-likes');
-            if (likesEl) likesEl.textContent = likesMatch[1];
+            if (likesEl) likesEl.textContent = data.likes;
+          } else {
+            // fallback: try to extract likes from message text
+            const likesMatch = data.message.match(/Total: (\d+)/i) || data.message.match(/\| Total: (\d+)/);
+            if (likesMatch && likesMatch[1]) {
+              const likesEl = document.getElementById('bot-likes');
+              if (likesEl) likesEl.textContent = likesMatch[1];
+            }
           }
-          
-          // Add to activity log
+
+          // Add to activity log with optional post link
           const log = document.getElementById('activity-log');
           if (log) {
             const entry = document.createElement('div');
             entry.className = 'log-entry';
-            const time = new Date().toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
+            const time = new Date().toLocaleTimeString('en-US', {
+              hour: '2-digit',
               minute: '2-digit',
               second: '2-digit'
             });
-            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${data.message}</span>`;
+
+            // if server provided a postLink, render clickable anchor
+            let msgHtml = '';
+            if (data.postLink) {
+              const safeMsg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              msgHtml = `${safeMsg} <a href="${data.postLink}" target="_blank" rel="noopener noreferrer">مشاهده پست</a>`;
+            } else {
+              msgHtml = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msgHtml}</span>`;
             log.insertBefore(entry, log.firstChild);
-            
-            while (log.children.length > 25) {
+
+            while (log.children.length > 50) {
               log.removeChild(log.lastChild);
             }
           }
