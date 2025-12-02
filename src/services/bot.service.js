@@ -272,6 +272,28 @@ class BotService {
 
     let comments = [];
     try {
+      // First check media info to see if comments are allowed
+      let mediaInfo = null;
+      try {
+        mediaInfo = await instagramService.getMediaInfo(job.username, postId);
+      } catch (miErr) {
+        // If media info fails, continue to try fetching comments (some endpoints may not provide media info)
+        console.warn(`[${job.username}] Could not fetch media info for ${postId}:`, miErr.message || miErr);
+      }
+
+      if (mediaInfo) {
+        // If comments are disabled or comment_count is 0, skip
+        if (mediaInfo.comments_disabled === true) {
+          job.onUpdate('idle', `⚠️ کامنت‌های این پست غیرفعال شده‌اند`, { postLink });
+          return;
+        }
+
+        if (typeof mediaInfo.comment_count === 'number' && mediaInfo.comment_count === 0) {
+          job.onUpdate('idle', `⚠️ این پست هیچ کامنتی ندارد`, { postLink });
+          return;
+        }
+      }
+
       const commentsFeed = await instagramService.getPostComments(job.username, postId);
       comments = await commentsFeed.items();
     } catch (e) {

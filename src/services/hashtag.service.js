@@ -3,6 +3,13 @@ const path = require('path');
 
 const dataFilePath = path.join(__dirname, '..', '..', 'data', 'hashtags.json');
 
+/**
+ * HashtagService - Manages hashtag storage and retrieval
+ * Features:
+ * - Saves hashtags to /data/hashtags.json
+ * - Automatically normalizes Persian/Arabic Unicode (NFC)
+ * - Stores hashtags without "#"
+ */
 class HashtagService {
   /**
    * Retrieves the list of hashtags from the JSON file.
@@ -22,12 +29,19 @@ class HashtagService {
 
   /**
    * Adds a new hashtag to the list if it doesn't already exist.
+   * Normalizes Persian/Arabic Unicode and removes leading "#"
    * @param {string} hashtag - The hashtag to add.
+   * @returns {Promise<void>}
    */
   async addHashtag(hashtag) {
+    if (!hashtag || typeof hashtag !== 'string') return;
+    // Normalize: remove leading #, trim and NFC normalize for Unicode/Persian
+    const clean = hashtag.replace(/^#/, '').trim().normalize('NFC');
+    if (!clean) return;
+
     const hashtags = await this.getHashtags();
-    if (!hashtags.includes(hashtag)) {
-      hashtags.push(hashtag);
+    if (!hashtags.includes(clean)) {
+      hashtags.push(clean);
       await fs.writeFile(dataFilePath, JSON.stringify(hashtags, null, 2));
     }
   }
@@ -35,6 +49,7 @@ class HashtagService {
   /**
    * Removes a hashtag from the list.
    * @param {string} hashtag - The hashtag to remove.
+   * @returns {Promise<void>}
    */
   async removeHashtag(hashtag) {
     let hashtags = await this.getHashtags();

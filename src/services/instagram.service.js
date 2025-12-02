@@ -244,7 +244,8 @@ class InstagramService {
       }
 
       // Clean hashtag - remove # if present and trim whitespace
-      const cleanHashtag = hashtag.replace(/^#/, '').trim();
+      // Normalize to NFC to handle Persian/Unicode properly
+      const cleanHashtag = hashtag.replace(/^#/, '').trim().normalize('NFC');
       
       if (!cleanHashtag) {
         throw new Error('هشتگ معتبر نیست');
@@ -258,40 +259,79 @@ class InstagramService {
         throw new Error('API Client به درستی initialize نشده است');
       }
       
-      // Get the tag feed first
-      const feed = ig.feed.tag(cleanHashtag);
-      
-      // Try to get hashtag info to set proper rank_token
-      // This helps avoid 404 errors with rank_token
+      // Build a list of candidate variants to try (helpful for Persian/Arabic char variants and URI-encoding)
+      const variants = [];
+      variants.push(cleanHashtag);
+      try {
+        variants.push(cleanHashtag.normalize('NFKC'));
+      } catch (e) {}
+      variants.push(encodeURIComponent(cleanHashtag));
+
+      // Persian/Arabic character variants
+      const swapVariants = tag => {
+        return tag
+          .replace(/ي/g, 'ی')
+          .replace(/ك/g, 'ک')
+          .replace(/ـ/g, '')
+          .replace(/أ|إ/g, 'ا');
+      };
+      const noDiacritics = tag => tag.replace(/[-]|[\u064B-\u0652]/g, '');
+
+      try {
+        const swapped = swapVariants(cleanHashtag);
+        if (swapped !== cleanHashtag) variants.push(swapped);
+        const noDia = noDiacritics(cleanHashtag);
+        if (noDia !== cleanHashtag) variants.push(noDia);
+        const swappedNoDia = noDiacritics(swapped);
+        if (swappedNoDia !== cleanHashtag) variants.push(swappedNoDia);
+      } catch (e) {}
+
+      // Remove duplicates while preserving order
+      const seen = new Set();
+      const candidates = variants.filter(v => {
+        if (!v) return false;
+        if (seen.has(v)) return false;
+        seen.add(v);
+        return true;
+      });
+
+      let feed = null;
+      let usedVariant = null;
+
+      // Try to get hashtag info for each candidate to find a working variant
       if (ig.hashtag && typeof ig.hashtag.info === 'function') {
-        try {
-          const hashtagInfo = await ig.hashtag.info(cleanHashtag);
-          console.log(`[HASHTAG] Info: ${hashtagInfo.media_count || 0} posts, name: ${hashtagInfo.name || cleanHashtag}`);
-          
-          if (hashtagInfo.media_count === 0) {
-            console.warn(`[WARN] Hashtag #${cleanHashtag} has no posts`);
+        for (const candidate of candidates) {
+          try {
+            const infoCandidate = await ig.hashtag.info(candidate);
+            if (infoCandidate && (infoCandidate.media_count > 0 || infoCandidate.id)) {
+              usedVariant = candidate;
+              feed = ig.feed.tag(candidate);
+              console.log(`[HASHTAG] Found variant '${candidate}' -> posts: ${infoCandidate.media_count || 0}`);
+
+              const userId = ig.state.cookieUserId || ig.state.userId || ig.state.loggedInUser?.pk;
+              if (infoCandidate.id && userId) {
+                const rankToken = `${infoCandidate.id}_${userId}`;
+                feed.rankToken = rankToken;
+                console.log(`[HASHTAG] Set rank_token: ${rankToken}`);
+              }
+              break;
+            }
+          } catch (err) {
+            // ignore and try next candidate
+            console.warn(`[WARN] hashtag.info failed for '${candidate}': ${err.message || err}`);
+            continue;
           }
-          
-          // Set rank_token from hashtag info if available
-          // Format: {hashtag_id}_{user_id}
-          // Try different ways to get user ID
-          const userId = ig.state.cookieUserId || ig.state.userId || ig.state.loggedInUser?.pk;
-          if (hashtagInfo.id && userId) {
-            const rankToken = `${hashtagInfo.id}_${userId}`;
-            feed.rankToken = rankToken;
-            console.log(`[HASHTAG] Set rank_token: ${rankToken}`);
-          } else {
-            console.warn(`[WARN] Could not get userId for rank_token. Hashtag ID: ${hashtagInfo.id}, User ID: ${userId}`);
-          }
-        } catch (infoError) {
-          // If we can't get info, continue anyway - the feed might still work with default rankToken
-          console.warn(`[WARN] Could not get hashtag info for #${cleanHashtag}:`, infoError.message);
-          // Don't throw - continue to try getting the feed
         }
-      } else {
-        console.warn('[WARN] hashtag.info method not available, using default rankToken');
       }
-      
+
+      // If no working variant found, fall back to default tag (may still work)
+      if (!feed) {
+        usedVariant = cleanHashtag;
+        feed = ig.feed.tag(cleanHashtag);
+        console.warn(`[WARN] No working variant found for #${cleanHashtag}, using original as fallback. Tried: ${candidates.join(', ')}`);
+      } else {
+        console.log(`[HASHTAG] Using variant '${usedVariant}' for tag feed`);
+      }
       console.log(`[SUCCESS] Hashtag feed ready (${sortType})`);
       return feed;
     } catch (error) {
@@ -330,6 +370,27 @@ class InstagramService {
       return feed;
     } catch (error) {
       console.error(`[ERROR] Failed to get post comments:`, error.message);
+      throw error;
+    }
+  }
+
+  async getMediaInfo(username, mediaId) {
+    try {
+      if (!mediaId) {
+        throw new Error('mediaId الزامی است');
+      }
+
+      console.log(`[MEDIA] Fetching media info for ${mediaId}...`);
+      const ig = await this.getApiClient(username);
+      const info = await ig.media.info(mediaId);
+
+      // ig.media.info typically returns an object with an 'items' array
+      const media = info && Array.isArray(info.items) && info.items.length ? info.items[0] : null;
+
+      console.log(`[SUCCESS] Media info fetched`);
+      return media;
+    } catch (error) {
+      console.error(`[ERROR] Failed to get media info:`, error.message);
       throw error;
     }
   }
