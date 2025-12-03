@@ -318,6 +318,7 @@
 
   // Bot state management
   let botIsRunning = false;
+  let stopBtnTimeout = null;
 
   // Start form handler
   const startForm = document.getElementById('start-form');
@@ -387,6 +388,20 @@
       const indicator = document.getElementById('bot-starting-indicator');
       if (indicator) indicator.style.display = 'block';
       
+      // نمایش سریع stop موقت حتی قبل ws، درصورت عدم خطای فوری
+      document.getElementById('stop-form').style.display = 'block';
+      document.getElementById('start-form').style.display = 'none';
+      if (stopBtnTimeout) clearTimeout(stopBtnTimeout);
+      // اگر بعد از 3 ثانیه هیچ پاسخی از ws نیامد، دکمه ها را به حالت قبل برگردان
+      stopBtnTimeout = setTimeout(() => {
+        if (!botIsRunning) {
+          document.getElementById('stop-form').style.display = 'none';
+          document.getElementById('start-form').style.display = 'block';
+          startBtn.disabled = false;
+          startBtn.textContent = '▶️ شروع ربات';
+        }
+      }, 3000);
+
       try {
         // Use URLSearchParams instead of FormData for better compatibility
         const params = new URLSearchParams();
@@ -496,7 +511,7 @@
     });
   }
 
-  // WebSocket for bot status
+  // WebSocket for bot status -- همچنین حالت start/stop را رخ می‌دهد
   function initWebSocket() {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -545,20 +560,18 @@
               statusLight.classList.add('inactive');
               statusLight.style.background = '#ffa500';
             }
-          } else {
+          } else if (data.status === 'idle' || data.status === 'error' || data.status === 'paused') {
             botIsRunning = false;
-            if (statusEl) statusEl.textContent = '🔴 غیرفعال';
-            if (statusEl) statusEl.style.color = '#ff3b30';
-            if (statusLight) {
-              statusLight.classList.add('inactive');
-              statusLight.style.background = '#ccc';
-            }
-            if (startForm) startForm.style.display = 'block';
-            if (stopForm) stopForm.style.display = 'none';
-            if (startBtn) {
-              startBtn.disabled = false;
-              startBtn.textContent = '▶️ شروع ربات';
-            }
+            // دکمه stop را تا ۳ثانیه پس از stop نگه‌دار تا کاربر فرصت داشته باشد کلیک کند (اگر فوراً فید شد)
+            if (stopBtnTimeout) clearTimeout(stopBtnTimeout);
+            stopBtnTimeout = setTimeout(() => {
+              stopForm.style.display = 'none';
+              startForm.style.display = 'block';
+              if (startBtn) {
+                startBtn.disabled = false;
+                startBtn.textContent = '▶️ شروع ربات';
+              }
+            }, 3000);
           }
         }
 
