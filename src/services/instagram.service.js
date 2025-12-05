@@ -22,18 +22,18 @@ class InstagramService {
   }
 
   // تصحیح Device برای تطابق بیشتر با اپ اصلی Instagram
-  _configureDevice(username) {
+  _configureDevice(ig, username) {
     const randomUserAgent = INSTAGRAM_USER_AGENTS[Math.floor(Math.random() * INSTAGRAM_USER_AGENTS.length)];
-    this.ig.state.generateDevice(username);
+    ig.state.generateDevice(username);
     
     // تنظیمات دستی Device
-    this.ig.state.deviceString = randomUserAgent;
-    if (!this.ig.request) {
-      this.ig.request = {};
+    ig.state.deviceString = randomUserAgent;
+    if (!ig.request) {
+      ig.request = {};
     }
-    this.ig.request.userAgent = randomUserAgent;
+    ig.request.userAgent = randomUserAgent;
     
-    return this.ig;
+    return ig;
   }
 
   async login(username, password) {
@@ -54,7 +54,7 @@ class InstagramService {
       console.log(`🔐 Logging in to account: ${username}...`);
 
       // Configure device
-      this._configureDevice(username);
+      this._configureDevice(this.ig, username);
 
       // Pre-login Flow - simulate real device
       console.log('📱 Running Pre-Login Flow...');
@@ -197,7 +197,7 @@ class InstagramService {
       }
 
       const ig = new IgApiClient();
-      this._configureDevice(account.username);
+      this._configureDevice(ig, account.username);
       await ig.state.deserialize(account.session);
       
       console.log(`[SUCCESS] API Client ready for ${username}`);
