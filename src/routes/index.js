@@ -60,7 +60,11 @@ router.get('/accounts', async (req, res) => {
 });
 router.get('/hashtags', async (req, res) => {
   const hashtags = await hashtagService.getHashtags();
-  res.render('hashtags', { hashtags, error: req.query.error });
+  res.render('hashtags', {
+    hashtags,
+    selectedAccount: req.session.selectedUsername || null,
+    error: req.query.error
+  });
 });
 router.get('/bot', async (req, res) => {
   const hashtags = await hashtagService.getHashtags();
@@ -182,8 +186,14 @@ router.post('/remove-account', async (req, res) => {
  */
 router.post('/add-hashtag', async (req, res) => {
   const { hashtag } = req.body;
+  const selectedUsername = req.session.selectedUsername;
+
+  if (!selectedUsername) {
+    return res.redirect(`/?error=${encodeURIComponent('لطفا برای اعتبارسنجی هشتگ، یک اکانت انتخاب کنید.')}`);
+  }
+
   try {
-    await hashtagService.addHashtag(hashtag);
+    await hashtagService.addHashtag(hashtag, selectedUsername);
     res.redirect('/');
   } catch (error) {
     res.redirect(`/?error=${encodeURIComponent(error.message)}`);

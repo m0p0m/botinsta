@@ -1,19 +1,23 @@
-<div class="minimal-login">
-  <form action="/app-login" method="POST" class="minimal-form">
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="error"><%= error %></div>
-    <% } %>
+<%- include('partials/header') %>
 
-    <input type="text" name="username" placeholder="Username" value="<%= username || '' %>" autocomplete="username" />
-    <input type="password" name="password" placeholder="Password" autocomplete="current-password" required />
-    <button type="submit">Log in</button>
-  </form>
+<div class="login-container">
+  <div class="login-box">
+    <h1>ورود به پنل</h1>
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+    <form action="/app-login" method="POST">
+      <div class="form-group">
+        <label for="username">نام کاربری</label>
+        <input type="text" id="username" name="username" value="<%= username %>" required>
+      </div>
+      <div class="form-group">
+        <label for="password">رمز عبور</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn-primary">ورود</button>
+    </form>
+  </div>
 </div>
 
-<style>
-  .minimal-login{ display:flex; align-items:center; justify-content:center; min-height:70vh; padding:20px; }
-  .minimal-form{ display:flex; flex-direction:column; gap:8px; width:100%; max-width:360px; }
-  .minimal-form input{ padding:10px 12px; border:1px solid #ccc; border-radius:6px; font-size:14px; }
-  .minimal-form button{ padding:10px 12px; border-radius:6px; border:none; background:#333; color:#fff; font-weight:600; cursor:pointer; }
-  .error{ color:#b71c1c; font-size:13px; margin-bottom:6px; }
-</style>
+<%- include('partials/footer') %>

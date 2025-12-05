@@ -1,22 +1,48 @@
-<div class="hashtag-management">
-  <h2>مدیریت هشتگ‌ها</h2>
-  <form action="/add-hashtag" method="POST" class="hashtag-add-form">
-    <input type="text" name="hashtag" placeholder="هشتگ جدید..." required>
-    <button type="submit">افزودن</button>
-  </form>
-  <ul class="hashtags-list">
-    <% if(hashtags && hashtags.length) { %>
-      <% hashtags.forEach(function(hashtag){ %>
-        <li>
-          <span class="hashtag-title">#<%= hashtag %></span>
-          <form action="/remove-hashtag" method="POST" style="display:inline;">
-            <input type="hidden" name="hashtag" value="<%= hashtag %>">
-            <button class="remove-btn" title="حذف">🗑</button>
-          </form>
-        </li>
-      <% }) %>
-    <% } else { %>
-      <li style="opacity:.7;text-align:center;">هنوز هیچ هشتگی ثبت نشده</li>
-    <% } %>
-  </ul>
+<%- include('partials/header') %>
+
+<div class="dashboard-main">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="header-content">
+      <h1>🏷️ مدیریت هشتگ‌ها</h1>
+      <p class="header-subtitle">هشتگ‌های مورد نظر خود را برای ربات اضافه یا حذف کنید</p>
+    </div>
+  </div>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-content"><%= error %></div>
+    </div>
+  <% } %>
+
+  <!-- Hashtags Section -->
+  <section class="section">
+    <div class="section-header">
+      <h2>لیست هشتگ‌ها</h2>
+    </div>
+    <form id="hashtag-form" class="hashtag-form" action="/add-hashtag" method="POST">
+      <div class="form-input-group">
+        <input id="hashtag-input" name="hashtag" type="text" placeholder="هشتگ جدید را وارد کنید..." required>
+        <button type="submit" class="btn-submit">افزودن</button>
+      </div>
+    </form>
+    <div id="hashtags-list" class="hashtags-container">
+      <% if (hashtags && hashtags.length) { %>
+        <% hashtags.forEach(function(h){ %>
+          <div class="hashtag-item">
+            <span class="hashtag-name">#<%= h %></span>
+            <form action="/remove-hashtag" method="POST" style="display:inline;">
+              <input type="hidden" name="hashtag" value="<%= h %>">
+              <button class="btn-remove-tag">🗑</button>
+            </form>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="log-empty">هنوز هیچ هشتگی ثبت نشده</div>
+      <% } %>
+    </div>
+  </section>
 </div>
+
+<%- include('partials/footer') %>

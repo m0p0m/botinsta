@@ -1,3 +1,5 @@
+<%- include('partials/header') %>
+
 <div class="dashboard-main">
   <% if (typeof error !== 'undefined' && error) { %>
     <div class="alert alert-error">
@@ -52,34 +54,6 @@
               </div>
             </div>
           <% }) %>
-        </div>
-      </section>
-
-      <!-- Hashtags -->
-      <section class="section">
-        <div class="section-header">
-          <h2>🏷️ هشتگ‌ها</h2>
-        </div>
-        <form id="hashtag-form" class="hashtag-form" action="/add-hashtag" method="POST">
-          <div class="form-input-group">
-            <input id="hashtag-input" name="hashtag" type="text" placeholder="هشتگ جدید را وارد کنید..." required>
-            <button type="submit" class="btn-submit">افزودن</button>
-          </div>
-        </form>
-        <div id="hashtags-list" class="hashtags-container">
-          <% if (hashtags && hashtags.length) { %>
-            <% hashtags.forEach(function(h){ %>
-              <div class="hashtag-item">
-                <span class="hashtag-name">#<%= h %></span>
-                <form action="/remove-hashtag" method="POST" style="display:inline;">
-                  <input type="hidden" name="hashtag" value="<%= h %>">
-                  <button class="btn-remove-tag">🗑</button>
-                </form>
-              </div>
-            <% }) %>
-          <% } else { %>
-            <div class="log-empty">هنوز هیچ هشتگی ثبت نشده</div>
-          <% } %>
         </div>
       </section>
 
@@ -266,55 +240,6 @@
       addAccountModal.classList.remove('show');
     }
   });
-
-  // Add hashtag with AJAX
-  const hashtagForm = document.getElementById('hashtag-form');
-  if (hashtagForm) {
-    hashtagForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const hashtag = document.getElementById('hashtag-input').value;
-
-      try {
-        const response = await fetch('/add-hashtag', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `hashtag=${encodeURIComponent(hashtag)}`
-        });
-
-        if (response.ok) {
-          // Add hashtag to list
-          const hashtags = document.getElementById('hashtags-list');
-          const item = document.createElement('div');
-          item.className = 'hashtag-item';
-          item.innerHTML = `
-            <span class="hashtag-name">#${hashtag}</span>
-            <form action="/remove-hashtag" method="POST" style="display:inline;">
-              <input type="hidden" name="hashtag" value="${hashtag}">
-              <button type="submit" class="btn-remove-tag">🗑</button>
-            </form>
-          `;
-          hashtags.appendChild(item);
-
-          // Clear input
-          document.getElementById('hashtag-input').value = '';
-          
-          // Update target select
-          const targetSelect = document.getElementById('target-select');
-          const option = document.createElement('option');
-          option.value = hashtag;
-          option.textContent = '#' + hashtag;
-          targetSelect.appendChild(option);
-
-          showNotification('✅ هشتگ اضافه شد');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        showNotification('❌ خطا در افزودن هشتگ');
-      }
-    });
-  }
 
   // Bot state management
   let botIsRunning = false;
@@ -560,18 +485,14 @@
               statusLight.classList.add('inactive');
               statusLight.style.background = '#ffa500';
             }
-          } else if (data.status === 'idle' || data.status === 'error' || data.status === 'paused') {
+          } else if (data.status === 'idle' || data.status === 'error' || data.status === 'paused' || data.status === 'stopped') {
             botIsRunning = false;
-            // دکمه stop را تا ۳ثانیه پس از stop نگه‌دار تا کاربر فرصت داشته باشد کلیک کند (اگر فوراً فید شد)
-            if (stopBtnTimeout) clearTimeout(stopBtnTimeout);
-            stopBtnTimeout = setTimeout(() => {
-              stopForm.style.display = 'none';
-              startForm.style.display = 'block';
-              if (startBtn) {
-                startBtn.disabled = false;
-                startBtn.textContent = '▶️ شروع ربات';
-              }
-            }, 3000);
+            stopForm.style.display = 'none';
+            startForm.style.display = 'block';
+            if (startBtn) {
+              startBtn.disabled = false;
+              startBtn.textContent = '▶️ شروع ربات';
+            }
           }
         }
 
@@ -688,3 +609,5 @@
   }
 })();
 </script>
+
+<%- include('partials/footer') %>

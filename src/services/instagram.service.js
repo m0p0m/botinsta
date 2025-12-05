@@ -28,6 +28,9 @@ class InstagramService {
     
     // تنظیمات دستی Device
     this.ig.state.deviceString = randomUserAgent;
+    if (!this.ig.request) {
+      this.ig.request = {};
+    }
     this.ig.request.userAgent = randomUserAgent;
     
     return this.ig;
