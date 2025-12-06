@@ -197,8 +197,8 @@ class InstagramService {
       }
 
       const ig = new IgApiClient();
-      this._configureDevice(ig, account.username);
       await ig.state.deserialize(account.session);
+      this._configureDevice(ig, account.username);
       
       console.log(`[SUCCESS] API Client ready for ${username}`);
       return ig;
