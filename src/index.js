@@ -17,11 +17,66 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// expose wss to bot manager for broadcasting background updates
-const botManagerInstance = require('./services/bot-manager.service');
-if (botManagerInstance && typeof botManagerInstance.setWss === 'function') {
-  botManagerInstance.setWss(wss);
+wss.on('connection', (ws) => {
+  console.log('🔗 WebSocket client connected');
+
+  // ارسال وضعیت اولیه
+  const botStatus = botManager.getBotStatus();
+  const statusData = {
+    status: botStatus ? 'running' : 'idle',
+    message: botStatus ? `ربات در حال اجرا برای ${botStatus.username}` : 'ربات آماده است',
+    ...botStatus
+  };
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(statusData));
+  }
+
+  // پردازش پیام‌های دریافتی از کلاینت
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      console.log('📨 WebSocket message received:', data);
+
+      if (data.type === 'status_request') {
+        const botStatus = botManager.getBotStatus();
+        ws.send(JSON.stringify({
+          status: botStatus ? 'running' : 'idle',
+          message: botStatus ? `ربات در حال اجرا برای ${botStatus.username}` : 'ربات آماده است',
+          ...botStatus
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error processing WebSocket message:', error);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('🔗 WebSocket client disconnected');
+  });
+
+  ws.on('error', (error) => {
+    console.error('❌ WebSocket error:', error);
+  });
+});
+
+// تعریف broadcast function
+function broadcast(data) {
+  console.log('📢 Broadcasting to', wss.clients.size, 'clients:', data);
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(JSON.stringify(data));
+      } catch (error) {
+        console.error('❌ Error broadcasting to client:', error);
+      }
+    }
+  });
 }
+
+// وصل کردن broadcast به botManager
+botManager.setBroadcastFunction(broadcast);
 
 // Configure View Engine
 app.set('view engine', 'ejs');
@@ -34,7 +89,7 @@ app.locals.assetVersion = Date.now();
 
 // Middleware - Static Files with No-Cache headers for CSS
 app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: 0, // No cache for static files during development
+  maxAge: 0,
   setHeaders: (res, path) => {
     if (path.endsWith('.css') || path.endsWith('.js')) {
       res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
@@ -52,35 +107,32 @@ app.use(bodyParser.json());
 
 // Middleware - Session
 app.use(session({
-  secret: 'secret-key',
+  secret: process.env.SESSION_SECRET || 'secret-key-change-this',
   resave: false,
   saveUninitialized: true,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Middleware - WebSocket
 app.use((req, res, next) => {
   req.wss = wss;
+  req.broadcast = broadcast;
   next();
 });
 
 // Routes
 app.use('/', routes);
 
-// Static Middleware for CSS DEBUG
-app.get('/debug-css', (req, res) => {
-  const pathDebug = require('path');
-  const cssPath = pathDebug.join(__dirname, 'public', 'css', 'style.css');
-  try {
-    res.sendFile(cssPath, (err) => {
-      if (err) {
-        console.error('Sending /css/style.css failed:', err);
-        res.status(500).send('ERROR sending CSS file');
-      }
-    });
-  } catch (e) {
-    console.error('Exception in /debug-css:', e);
-    res.status(500).send('Exception occurred');
-  }
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).render('error', {
+    error: 'خطای سرور',
+    message: err.message || 'خطای نامشخص رخ داده است'
+  });
 });
 
 // Start Server
@@ -90,19 +142,19 @@ server.listen(port, () => {
   console.log('🤖 Instagram Bot');
   console.log('='.repeat(60));
   console.log(`✓ Server running at: http://localhost:${port}`);
-  console.log('📱 Open Instagram app and be ready for 2FA verification');
+  console.log(`✓ WebSocket available at: ws://localhost:${port}`);
   console.log('='.repeat(60) + '\n');
-
-  // Load persisted state and resume background bots
-  botManager.loadState();
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n\n🛑 Server shutting down...');
+
+  // Stop all running bots
+  await botManager.stopAllBots();
+
   server.close(() => {
     console.log('✅ Server closed');
     process.exit(0);
   });
 });
-

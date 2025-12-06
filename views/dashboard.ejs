@@ -511,144 +511,187 @@
     });
   }
 
-  // WebSocket for bot status -- همچنین حالت start/stop را رخ می‌دهد
   function initWebSocket() {
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(protocol + '//' + window.location.host);
+      const wsUrl = `${protocol}//${window.location.host}`;
+      console.log('🔗 Connecting to WebSocket:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
 
-          ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+      ws.onopen = () => {
+        console.log('✅ WebSocket connection established');
         
-        // Update status
-        if (data.status) {
-          const statusEl = document.getElementById('bot-status');
-          const statusLight = document.getElementById('status-light');
-          const startBtn = document.getElementById('start-btn');
-          const stopBtn = document.getElementById('stop-btn');
-          const stopForm = document.getElementById('stop-form');
-          const startForm = document.getElementById('start-form');
-
-          if (data.status === 'running') {
-            botIsRunning = true;
-            
-            // Hide starting indicator
-            const indicator = document.getElementById('bot-starting-indicator');
-            if (indicator) indicator.style.display = 'none';
-            
-            if (statusEl) {
-              statusEl.textContent = '🟢 فعال و در حال کار';
-              statusEl.style.color = '#31c48d';
-              statusEl.classList.add('running');
-            }
-            if (statusLight) {
-              statusLight.classList.remove('inactive');
-              statusLight.classList.add('running');
-              statusLight.style.background = '#31c48d';
-            }
-            if (startForm) startForm.style.display = 'none';
-            if (stopForm) stopForm.style.display = 'block';
-            if (stopBtn) {
-              stopBtn.disabled = false;
-              stopBtn.textContent = '⏹️ توقف ربات';
-            }
-          } else if (data.status === 'paused') {
-            botIsRunning = false;
-            if (statusEl) statusEl.textContent = '🟡 متوقف موقت';
-            if (statusEl) statusEl.style.color = '#ffa500';
-            if (statusLight) {
-              statusLight.classList.add('inactive');
-              statusLight.style.background = '#ffa500';
-            }
-          } else if (data.status === 'idle' || data.status === 'error' || data.status === 'paused') {
-            botIsRunning = false;
-            // دکمه stop را تا ۳ثانیه پس از stop نگه‌دار تا کاربر فرصت داشته باشد کلیک کند (اگر فوراً فید شد)
-            if (stopBtnTimeout) clearTimeout(stopBtnTimeout);
-            stopBtnTimeout = setTimeout(() => {
-              stopForm.style.display = 'none';
-              startForm.style.display = 'block';
-              if (startBtn) {
-                startBtn.disabled = false;
-                startBtn.textContent = '▶️ شروع ربات';
-              }
-            }, 3000);
+        // Request current status after 1 second
+        setTimeout(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'status_request' }));
           }
-        }
+        }, 1000);
+        
+        showNotification('✅ متصل به سرور');
+      };
 
-        // Update current target
-        if (data.target) {
-          const targetRow = document.getElementById('current-target-row');
-          const targetEl = document.getElementById('current-target');
-          if (targetRow) targetRow.style.display = 'flex';
-          if (targetEl) targetEl.textContent = `#${data.target}`;
-        }
-
-        // Update activity message and likes
-        if (data.message) {
-          const activity = document.getElementById('bot-activity');
-          if (activity) activity.textContent = data.message;
-
-          // If structured likes provided, update likes counter
-          if (typeof data.likes !== 'undefined') {
-            const likesEl = document.getElementById('bot-likes');
-            if (likesEl) likesEl.textContent = data.likes;
-          } else {
-            // fallback: try to extract likes from message text
-            const likesMatch = data.message.match(/Total: (\d+)/i) || data.message.match(/\| Total: (\d+)/);
-            if (likesMatch && likesMatch[1]) {
-              const likesEl = document.getElementById('bot-likes');
-              if (likesEl) likesEl.textContent = likesMatch[1];
-            }
-          }
-
-          // Add to activity log with optional post link
-          const log = document.getElementById('activity-log');
-          if (log) {
-            const entry = document.createElement('div');
-            
-            // Determine log entry type based on status
-            let logClass = 'log-entry';
-            if (data.status === 'running') logClass += ' log-success';
-            else if (data.status === 'error') logClass += ' log-error';
-            else if (data.status === 'liked' || data.status === 'post_completed') logClass += ' log-success';
-            else if (data.status === 'processing' || data.status === 'liking') logClass += ' log-info';
-            else logClass += ' log-info';
-            
-            entry.className = logClass;
-            const time = new Date().toLocaleTimeString('fa-IR', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            });
-
-            // if server provided a postLink, render clickable anchor
-            let msgHtml = '';
-            const safeMsg = (data.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            
-            if (data.postLink) {
-              msgHtml = `${safeMsg} <a href="${data.postLink}" target="_blank" rel="noopener noreferrer" class="post-link">🔗 مشاهده پست</a>`;
-            } else {
-              msgHtml = safeMsg;
-            }
-
-            entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msgHtml}</span>`;
-            log.insertBefore(entry, log.firstChild);
-
-            // Keep only last 100 entries
-            while (log.children.length > 100) {
-              log.removeChild(log.lastChild);
-            }
-            
-            // Auto-scroll to top
-            log.scrollTop = 0;
-          }
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📨 WebSocket message:', data);
+          
+          // Update UI
+          handleBotStatusUpdate(data);
+          
+        } catch (e) {
+          console.error('❌ Error parsing WebSocket message:', e, 'Raw:', event.data);
         }
       };
 
-      ws.onerror = (error) => console.error('WebSocket error:', error);
-      ws.onclose = () => setTimeout(initWebSocket, 3000);
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        showNotification('⚠️ خطا در اتصال به سرور');
+      };
+
+      ws.onclose = (event) => {
+        console.log('🔌 WebSocket closed, reconnecting...', event.code, event.reason);
+        showNotification('⏳ قطع اتصال، در حال تلاش مجدد...');
+        setTimeout(initWebSocket, 3000);
+      };
+
+      window.ws = ws;
+      
     } catch (e) {
-      console.error('WebSocket error:', e);
+      console.error('❌ WebSocket initialization error:', e);
+      setTimeout(initWebSocket, 5000);
+    }
+  }
+
+  // تابع handleBotStatusUpdate را به این شکل به‌روز کنید:
+  function handleBotStatusUpdate(data) {
+    const { status, message, username, target, likes } = data;
+    
+    console.log('🔄 Handling status update:', status);
+    
+    // Update status display
+    const statusEl = document.getElementById('bot-status');
+    const statusLight = document.getElementById('status-light');
+    const startForm = document.getElementById('start-form');
+    const stopForm = document.getElementById('stop-form');
+    
+    // Hide starting indicator always
+    const indicator = document.getElementById('bot-starting-indicator');
+    if (indicator) indicator.style.display = 'none';
+    
+    if (status === 'running' || status === 'starting' || status === 'processing') {
+      // Bot is active
+      botIsRunning = true;
+      
+      let statusText = '🟢 فعال و در حال کار';
+      let statusColor = '#31c48d';
+      
+      if (status === 'starting') {
+        statusText = '🟡 در حال شروع...';
+        statusColor = '#ffa500';
+      }
+      
+      if (statusEl) {
+        statusEl.innerHTML = statusText;
+        statusEl.style.color = statusColor;
+      }
+      
+      if (statusLight) {
+        statusLight.className = 'status-light running';
+        statusLight.style.background = statusColor;
+      }
+      
+      if (startForm) startForm.style.display = 'none';
+      if (stopForm) stopForm.style.display = 'block';
+      
+      // Enable stop button
+      const stopBtn = document.getElementById('stop-btn');
+      if (stopBtn) {
+        stopBtn.disabled = false;
+        stopBtn.textContent = '⏹️ توقف ربات';
+      }
+      
+    } else if (status === 'stopped' || status === 'idle') {
+      // Bot is stopped
+      botIsRunning = false;
+      
+      if (statusEl) {
+        statusEl.innerHTML = '🔴 غیرفعال';
+        statusEl.style.color = '#ff3b30';
+      }
+      
+      if (statusLight) {
+        statusLight.className = 'status-light inactive';
+        statusLight.style.background = '#ccc';
+      }
+      
+      if (startForm) startForm.style.display = 'block';
+      if (stopForm) stopForm.style.display = 'none';
+      
+      // Enable start button
+      const startBtn = document.getElementById('start-btn');
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = '▶️ شروع ربات';
+      }
+    }
+    
+    // Update likes count
+    if (typeof likes !== 'undefined') {
+      const likesEl = document.getElementById('bot-likes');
+      if (likesEl) likesEl.textContent = likes;
+    }
+    
+    // Update target
+    if (target) {
+      const targetRow = document.getElementById('current-target-row');
+      const targetEl = document.getElementById('current-target');
+      if (targetRow) targetRow.style.display = 'flex';
+      if (targetEl) targetEl.textContent = `#${target}`;
+    }
+    
+    // Update activity message
+    if (message) {
+      const activityEl = document.getElementById('bot-activity');
+      if (activityEl) activityEl.textContent = message;
+      
+      // Add to activity log
+      addToActivityLog(data);
+    }
+  }
+
+  // تابع addToActivityLog را اضافه کنید:
+  function addToActivityLog(data) {
+    const log = document.getElementById('activity-log');
+    if (!log) return;
+    
+    const entry = document.createElement('div');
+    let logClass = 'log-entry';
+    
+    if (data.status === 'error') logClass += ' log-error';
+    else if (data.status === 'liked' || data.status === 'post_completed') logClass += ' log-success';
+    else if (data.status === 'running') logClass += ' log-success';
+    else logClass += ' log-info';
+    
+    entry.className = logClass;
+    const time = new Date().toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+
+    let msgHtml = data.message || '';
+    if (data.postLink) {
+      msgHtml += ` <a href="${data.postLink}" target="_blank" class="post-link">🔗 مشاهده پست</a>`;
+    }
+
+    entry.innerHTML = `<span class="log-time">${time}</span><span class="log-msg">${msgHtml}</span>`;
+    log.insertBefore(entry, log.firstChild);
+
+    // Keep only last 50 entries
+    while (log.children.length > 50) {
+      log.removeChild(log.lastChild);
     }
   }
 

@@ -1,186 +1,132 @@
-/**
- * Bot Manager Service
- * مدیریت اجرای ربات در background و ذخیره state
- */
-
-const fs = require('fs').promises;
-const path = require('path');
 const { botService } = require('./bot.service');
 
-const stateFile = path.join(__dirname, '..', '..', 'data', 'bot-state.json');
-
-class BotManagerService {
+class BotManager {
   constructor() {
-    this.activeBots = {};
-    this.wss = null;
-    this.loadState();
+    this.bots = {};
+    this.broadcast = null;
   }
 
-  setWss(wss) {
-    this.wss = wss;
+  setBroadcastFunction(broadcastFunc) {
+    this.broadcast = broadcastFunc;
+    console.log('✅ Broadcast function set in BotManager');
   }
 
-  /**
-   * شروع ربات و ذخیره state
-   */
-  async startBot(username, type, target, startTime = null, sortType = 'recent') {
+  async startBot(username, type, target, startTime, sortType = 'recent') {
+    console.log(`[BOT MANAGER] Starting bot for ${username}, type: ${type}, target: ${target}`);
+    
+    if (this.bots[username]) {
+      throw new Error(`ربات برای ${username} در حال اجرا است`);
+    }
+
+    // Update callback to send WebSocket messages
+    const onUpdate = (status, message, data = {}) => {
+      console.log(`[${username}] ${status}: ${message}`);
+      
+      const updateData = {
+        status,
+        message,
+        username,
+        target,
+        sortType,
+        likes: data.likes || 0,
+        ...data
+      };
+
+      // Send update via WebSocket if available
+      if (this.broadcast && typeof this.broadcast === 'function') {
+        this.broadcast(updateData);
+      }
+    };
+
     try {
-      // ذخیره state
-      await this.saveState(username, {
+      // Start the bot
+      botService.start(
         username,
         type,
         target,
-        startTime,
+        onUpdate,
+        {
+          sortType,
+          delay_between_likes_ms: 3000,
+          polling_delay: 5000
+        },
+        startTime
+      );
+
+      // Store bot reference
+      this.bots[username] = {
+        username,
+        type,
+        target,
         sortType,
-        status: 'running',
-        startedAt: new Date().toISOString()
-      });
+        startTime: new Date(),
+        status: 'running'
+      };
 
-      // شروع ربات
-      botService.start(username, type, target, (status, message, meta) => {
-        this.updateBotStatus(username, status, message, meta);
-      }, { sortType }, startTime);
-
-      console.log(`[SUCCESS] Bot started for ${username}`);
-      return true;
-    } catch (error) {
-      console.error(`[ERROR] Failed to start bot for ${username}:`, error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * توقف ربات و پاک کردن state
-   */
-  async stopBot(username) {
-    try {
-      botService.stop(username);
-
-      // حذف state
-      await this.deleteState(username);
-
-      console.log(`[SUCCESS] Bot stopped for ${username}`);
-      return true;
-    } catch (error) {
-      console.error(`[ERROR] Failed to stop bot for ${username}:`, error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * ذخیره state ربات
-   */
-  async saveState(username, botState) {
-    try {
-      const stateDir = path.dirname(stateFile);
-      await fs.mkdir(stateDir, { recursive: true });
-
-      let states = [];
-      try {
-        const content = await fs.readFile(stateFile, 'utf8');
-        states = JSON.parse(content);
-      } catch (e) {
-        states = [];
-      }
-
-      // حذف state قدیمی
-      states = states.filter(s => s.username !== username);
-
-      // اضافه کردن state جدید
-      states.push(botState);
-
-      await fs.writeFile(stateFile, JSON.stringify(states, null, 2));
-      console.log(`[STATE] Saved state for ${username}`);
-    } catch (error) {
-      console.error(`[ERROR] Failed to save state for ${username}:`, error.message);
-    }
-  }
-
-  /**
-   * حذف state ربات
-   */
-  async deleteState(username) {
-    try {
-      let states = [];
-      try {
-        const content = await fs.readFile(stateFile, 'utf8');
-        states = JSON.parse(content);
-      } catch (e) {
-        return;
-      }
-
-      states = states.filter(s => s.username !== username);
-      await fs.writeFile(stateFile, JSON.stringify(states, null, 2));
-    } catch (error) {
-      console.error(`[ERROR] Failed to delete state for ${username}:`, error.message);
-    }
-  }
-
-  /**
-   * بارگیری state‌های ذخیره شده و شروع ربات‌ها
-   */
-  async loadState() {
-    try {
-      const content = await fs.readFile(stateFile, 'utf8');
-      const states = JSON.parse(content);
-
-      console.log(`\n[STATE] Loading ${states.length} bots from state...`);
-
-      for (const state of states) {
-        if (state.status === 'running') {
-          console.log(`[STATE] Starting bot for ${state.username}...`);
-          botService.start(state.username, state.type, state.target, (status, message, meta) => {
-            this.updateBotStatus(state.username, status, message, meta);
-          }, { sortType: state.sortType || 'recent' }, state.startTime);
-        }
-      }
-
-      console.log(`[SUCCESS] ${states.length} bots loaded\n`);
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        console.error(`[ERROR] Failed to load state:`, error.message);
-      }
-    }
-  }
-
-  /**
-   * به‌روزرسانی status ربات
-   */
-  updateBotStatus(username, status, message, meta = {}) {
-    const payload = Object.assign({ username, status, message }, meta);
-    console.log(`[${username}] ${status}: ${message}`);
-
-    // broadcast to all connected websocket clients if available
-    try {
-      if (this.wss && this.wss.clients) {
-        this.wss.clients.forEach(client => {
-          if (client.readyState === 1) {
-            try {
-              client.send(JSON.stringify(payload));
-            } catch (e) {
-              // ignore send errors for individual clients
-            }
-          }
+      // Broadcast start event
+      if (this.broadcast && typeof this.broadcast === 'function') {
+        this.broadcast({
+          status: 'starting',
+          message: `🚀 در حال شروع ربات برای ${username}...`,
+          username,
+          target,
+          sortType
         });
       }
-    } catch (e) {
-      console.error('⚠️ Error broadcasting bot status via WebSocket:', e.message);
+      
+    } catch (error) {
+      console.error(`[BOT MANAGER] Failed to start bot:`, error);
+      throw error;
     }
   }
 
-  /**
-   * دریافت وضعیت ربات
-   */
-  getBotStatus(username) {
-    return botService.jobs[username] || null;
+  async stopBot(username) {
+    console.log(`[BOT MANAGER] Stopping bot for ${username}`);
+    
+    if (this.bots[username]) {
+      botService.stop(username);
+      delete this.bots[username];
+      
+      // Broadcast stop event
+      if (this.broadcast && typeof this.broadcast === 'function') {
+        this.broadcast({
+          status: 'stopped',
+          message: `⏹️ ربات برای ${username} متوقف شد`,
+          username
+        });
+      }
+      
+      return true;
+    }
+    
+    return false;
   }
 
-  /**
-   * دریافت تمام ربات‌های فعال
-   */
-  getActiveBots() {
-    return Object.keys(botService.jobs);
+  async stopAllBots() {
+    console.log('[BOT MANAGER] Stopping all bots...');
+    const usernames = Object.keys(this.bots);
+    
+    for (const username of usernames) {
+      await this.stopBot(username);
+    }
+  }
+
+  getBotStatus(username = null) {
+    if (username) {
+      return this.bots[username] || null;
+    }
+    
+    // Return first running bot or null
+    const runningBots = Object.values(this.bots).filter(bot => bot.status === 'running');
+    return runningBots.length > 0 ? runningBots[0] : null;
+  }
+
+  getRunningBots() {
+    return Object.keys(this.bots).map(username => ({
+      username,
+      ...this.bots[username]
+    }));
   }
 }
 
-module.exports = new BotManagerService();
+module.exports = new BotManager();

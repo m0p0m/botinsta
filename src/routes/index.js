@@ -116,35 +116,35 @@ router.post('/add-account', async (req, res) => {
 
   // Validation
   if (!username || !password) {
-    return res.render('login', { 
-      error: '❌ نام کاربری و رمز عبور الزامی است' 
+    return res.render('login', {
+      error: '❌ نام کاربری و رمز عبور الزامی است'
     });
   }
 
   if (username.length < 3) {
-    return res.render('login', { 
-      error: '❌ نام کاربری باید حداقل 3 کاراکتر باشد' 
+    return res.render('login', {
+      error: '❌ نام کاربری باید حداقل 3 کاراکتر باشد'
     });
   }
 
   if (password.length < 6) {
-    return res.render('login', { 
-      error: '❌ رمز عبور باید حداقل 6 کاراکتر باشد' 
+    return res.render('login', {
+      error: '❌ رمز عبور باید حداقل 6 کاراکتر باشد'
     });
   }
 
   try {
     console.log(`[LOGIN] Login request for: ${username}`);
     const loggedInUser = await instagramService.login(username, password);
-    
+
     req.session.selectedUsername = username;
     console.log(`[SUCCESS] Login successful, session saved\n`);
-    
+
     return res.redirect('/?success=حساب با موفقیت اضافه شد');
 
   } catch (error) {
     ErrorHandler.logError('ورود حساب Instagram', error);
-    
+
     const userFriendlyError = ErrorHandler.formatErrorForDisplay(error);
     return res.render('login', { error: userFriendlyError });
   }
@@ -208,91 +208,139 @@ router.post('/remove-hashtag', async (req, res) => {
  * Starts the Instagram bot.
  * @route POST /start
  */
+router.use((req, res, next) => {
+  // Attach WebSocket broadcast function
+  if (req.wss) {
+    req.broadcast = (data) => {
+      req.wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify(data));
+        }
+      });
+    };
+  }
+  next();
+});
+
+// در روت /start:
 router.post('/start', async (req, res) => {
-  // Check if it's an AJAX request
-  const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
-  
-  // Debug log - show raw body first
-  console.log('[DEBUG] POST /start - Content-Type:', req.headers['content-type']);
-  console.log('[DEBUG] POST /start - Raw body:', req.body);
-  console.log('[DEBUG] POST /start - Body keys:', Object.keys(req.body || {}));
-  
-  // Get all possible field names (in case frontend sends different names)
+  const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+    req.headers.accept?.includes('application/json');
+
+  console.log('[DEBUG] POST /start - Body:', req.body);
+
   const username = req.body.username;
-  const type = req.body.type || req.body.botType || ''; // Support both 'type' and 'botType'
+  const type = req.body.type;
   const target = req.body.target || '';
   const startTime = req.body.startTime || '';
   const sortType = req.body.sortType || 'recent';
-  
-  // Debug log - show parsed values
-  console.log('[DEBUG] POST /start - Parsed values:', { username, type, target, startTime, sortType });
-  
-  // Get username from body or session
+
   const selectedUsername = username || req.session?.selectedUsername;
-  
+
   if (!selectedUsername) {
-    console.error('[ERROR] No username provided in request body or session');
-    console.error('[DEBUG] Request body:', req.body);
-    console.error('[DEBUG] Session:', req.session);
+    const errorMsg = 'هیچ اکانتی انتخاب نشده است. لطفا ابتدا یک اکانت انتخاب کنید.';
     if (isAjax) {
-      return res.status(400).json({ error: 'هیچ اکانتی انتخاب نشده است. لطفا ابتدا یک اکانت انتخاب کنید.' });
+      return res.status(400).json({
+        success: false,
+        error: errorMsg
+      });
     }
-    return res.redirect('/?error=No account selected.');
+    return res.redirect('/?error=' + encodeURIComponent(errorMsg));
   }
-  
-  // Validate required fields
+
   if (!type || type.trim() === '') {
-    console.error('[ERROR] Type is missing or empty. Request body:', req.body);
+    const errorMsg = 'نوع عملیات را انتخاب کنید.';
     if (isAjax) {
-      return res.status(400).json({ error: 'نوع عملیات را انتخاب کنید.' });
+      return res.status(400).json({
+        success: false,
+        error: errorMsg
+      });
     }
-    return res.redirect('/?error=Type is required.');
+    return res.redirect('/?error=' + encodeURIComponent(errorMsg));
   }
-  
+
   if (type === 'hashtag' && !target) {
+    const errorMsg = 'لطفا یک هشتگ انتخاب کنید.';
     if (isAjax) {
-      return res.status(400).json({ error: 'لطفا یک هشتگ انتخاب کنید.' });
+      return res.status(400).json({
+        success: false,
+        error: errorMsg
+      });
     }
-    return res.redirect('/?error=Hashtag is required for hashtag type.');
+    return res.redirect('/?error=' + encodeURIComponent(errorMsg));
   }
 
   try {
-    // شروع ربات و ذخیره state
-    await botManager.startBot(selectedUsername, type, target, startTime, sortType || 'recent');
-
-    // ارسال update برای تمام connected clients
-    if (req.wss) {
-      const sortTypeText = sortType === 'top' ? 'برترین' : 'جدیدترین';
-      req.wss.clients.forEach(client => {
-        if (client.readyState === 1) {
-          client.send(JSON.stringify({ 
-            status: 'running', 
-            message: `🚀 ربات برای ${selectedUsername} شروع شد - در حال جستجوی ${sortTypeText} پست‌های #${target}`,
-            username: selectedUsername,
-            target,
-            sortType: sortType || 'recent'
-          }));
-        }
-      });
-    }
+    // شروع ربات
+    await botManager.startBot(selectedUsername, type, target, startTime, sortType);
 
     if (isAjax) {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         message: 'ربات با موفقیت شروع شد',
         username: selectedUsername,
         target,
-        sortType: sortType || 'recent'
+        sortType
       });
     }
-    
+
     res.redirect('/');
   } catch (error) {
     console.error(`[ERROR] Failed to start bot:`, error);
+    const errorMsg = error.message || 'خطای نامشخص در شروع ربات';
+
     if (isAjax) {
-      return res.status(500).json({ error: error.message || 'خطای نامشخص در شروع ربات' });
+      return res.status(500).json({
+        success: false,
+        error: errorMsg
+      });
     }
-    res.redirect(`/?error=${encodeURIComponent(error.message)}`);
+
+    res.redirect(`/?error=${encodeURIComponent(errorMsg)}`);
+  }
+});
+
+// در روت /stop:
+router.post('/stop', async (req, res) => {
+  const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' ||
+    req.headers.accept?.includes('application/json');
+
+  const username = req.body.username || req.session?.selectedUsername;
+
+  if (!username) {
+    const errorMsg = 'هیچ اکانتی انتخاب نشده است.';
+    if (isAjax) {
+      return res.status(400).json({
+        success: false,
+        error: errorMsg
+      });
+    }
+    return res.redirect('/?error=' + encodeURIComponent(errorMsg));
+  }
+
+  try {
+    await botManager.stopBot(username);
+
+    if (isAjax) {
+      return res.json({
+        success: true,
+        message: 'ربات با موفقیت متوقف شد'
+      });
+    }
+
+    res.redirect('/');
+  } catch (error) {
+    console.error(`[ERROR] Failed to stop bot:`, error);
+    const errorMsg = error.message || 'خطا در توقف ربات';
+
+    if (isAjax) {
+      return res.status(500).json({
+        success: false,
+        error: errorMsg
+      });
+    }
+
+    res.redirect(`/?error=${encodeURIComponent(errorMsg)}`);
   }
 });
 
@@ -302,10 +350,10 @@ router.post('/start', async (req, res) => {
  */
 router.post('/stop', async (req, res) => {
   const { username } = req.body;
-  
+
   // Check if it's an AJAX request
   const isAjax = req.headers['x-requested-with'] === 'XMLHttpRequest' || req.headers.accept?.includes('application/json');
-  
+
   if (username) {
     try {
       await botManager.stopBot(username);
@@ -318,7 +366,7 @@ router.post('/stop', async (req, res) => {
           }
         });
       }
-      
+
       if (isAjax) {
         return res.json({ success: true, message: 'ربات با موفقیت متوقف شد' });
       }
@@ -329,7 +377,7 @@ router.post('/stop', async (req, res) => {
       }
     }
   }
-  
+
   if (!isAjax) {
     res.redirect('/');
   } else {
