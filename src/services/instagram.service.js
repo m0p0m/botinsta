@@ -198,7 +198,11 @@ class InstagramService {
 
       const ig = new IgApiClient();
       await ig.state.deserialize(account.session);
-      this._configureDevice(ig, account.username);
+
+      // Set the user agent from the saved session
+      if (account.userAgent) {
+        ig.request.userAgent = account.userAgent;
+      }
       
       console.log(`[SUCCESS] API Client ready for ${username}`);
       return ig;
